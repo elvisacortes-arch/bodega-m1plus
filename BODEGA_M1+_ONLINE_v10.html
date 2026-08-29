@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Bodega M1+" />
+<meta name="theme-color" content="#12181b" />
+<title>Bodega M1+ · V10 · Activos, Repuestos e Insumos</title>
+<style>
+  :root{
+    --bg:#12181b;
+    --surface:#1b2327;
+    --surface-2:#222b30;
+    --border:#2d383d;
+    --text:#e9eef0;
+    --text-muted:#8fa0a6;
+    --accent:#c17c3f;       /* cobre / óxido */
+    --accent-soft:#c17c3f22;
+    --ok:#4a9d6e;
+    --ok-soft:#4a9d6e22;
+    --warn:#d4a017;
+    --warn-soft:#d4a01722;
+    --danger:#c0473f;
+    --danger-soft:#c0473f22;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); overscroll-behavior-y:none;}
+  #root{display:flex; flex-direction:column; height:100vh; max-width:520px; margin:0 auto; position:relative; border-left:1px solid var(--border); border-right:1px solid var(--border);}
+
+  ::-webkit-scrollbar{width:0; height:0;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px 10px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, var(--surface), var(--bg));
+    flex-shrink:0;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:8px;
+    background:var(--accent-soft); border:1px solid var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono); font-weight:700; color:var(--accent); font-size:13px;
+  }
+  .brand-text .t1{font-size:11px; letter-spacing:.14em; color:var(--text-muted); text-transform:uppercase;}
+  .brand-text .t2{font-size:15px; font-weight:700; letter-spacing:.01em;}
+  .live-pill{
+    font-family:var(--mono); font-size:10px; letter-spacing:.08em;
+    color:var(--ok); background:var(--ok-soft); border:1px solid var(--ok);
+    padding:3px 8px; border-radius:20px; display:flex; align-items:center; gap:5px;
+  }
+  .live-dot{width:6px;height:6px;border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 var(--ok); animation:pulse 2s infinite;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 #4a9d6e66;}
+    70%{box-shadow:0 0 0 6px #4a9d6e00;}
+    100%{box-shadow:0 0 0 0 #4a9d6e00;}
+  }
+
+  /* ---------- Scroll content ---------- */
+  .content{flex:1; overflow-y:auto; padding:14px 16px 90px;}
+
+  /* ---------- Dashboard cards ---------- */
+  .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;}
+  .stat-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:12px 14px; position:relative; overflow:hidden;
+  }
+  .stat-card .num{font-family:var(--mono); font-size:24px; font-weight:700;}
+  .stat-card .label{font-size:11px; color:var(--text-muted); margin-top:2px; text-transform:uppercase; letter-spacing:.06em;}
+  .stat-card.crit .num{color:var(--danger);}
+  .stat-card.ok .num{color:var(--ok);}
+  .stat-card.warn .num{color:var(--warn);}
+
+  /* ---------- Search & filters ---------- */
+  .search-row{display:flex; gap:8px; margin-bottom:12px;}
+  .search-box{
+    flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    display:flex; align-items:center; padding:0 12px; gap:8px;
+  }
+  .search-box input{
+    background:transparent; border:none; outline:none; color:var(--text);
+    font-family:var(--sans); font-size:14px; padding:11px 0; width:100%;
+  }
+  .search-box input::placeholder{color:var(--text-muted);}
+  .icon-btn{
+    width:42px; height:42px; border-radius:var(--radius); background:var(--surface);
+    border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); flex-shrink:0; cursor:pointer;
+  }
+  .icon-btn.active{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+
+  .chip-row{display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; margin-bottom:4px;}
+  .chip{
+    font-size:12.5px; padding:7px 13px; border-radius:20px; white-space:nowrap;
+    background:var(--surface); border:1px solid var(--border); color:var(--text-muted); cursor:pointer;
+    font-weight:500;
+  }
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#1a1108;}
+
+  /* ---------- Item card (ficha de bodega) ---------- */
+  .item-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:12px 13px; margin-bottom:10px; display:flex; gap:12px; cursor:pointer;
+    position:relative;
+  }
+  .item-card:active{background:var(--surface-2);}
+  .item-thumb{
+    width:52px; height:52px; border-radius:8px; background:var(--surface-2);
+    border:1px dashed var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:var(--text-muted);
+  }
+  .item-main{flex:1; min-width:0;}
+  .item-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .item-code{font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:.03em;}
+  .item-name{font-size:14.5px; font-weight:600; margin-top:2px; line-height:1.3;}
+  .item-meta{font-size:11.5px; color:var(--text-muted); margin-top:4px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+  .dot-sep{width:3px;height:3px;border-radius:50%; background:var(--text-muted); flex-shrink:0;}
+  .stock-badge{
+    font-family:var(--mono); font-size:13px; font-weight:700; padding:3px 9px; border-radius:6px;
+    flex-shrink:0; text-align:center; min-width:44px;
+  }
+  .stock-badge.ok{background:var(--ok-soft); color:var(--ok);}
+  .stock-badge.warn{background:var(--warn-soft); color:var(--warn);}
+  .stock-badge.crit{background:var(--danger-soft); color:var(--danger);}
+
+  /* ---------- Estado de activos ---------- */
+  .status-badge{
+    font-family:var(--mono); font-size:11px; font-weight:700;
+    padding:3px 9px; border-radius:6px; flex-shrink:0;
+    text-align:center; text-transform:uppercase; white-space:nowrap;
+  }
+  .status-badge.reparado{background:var(--ok-soft); color:var(--ok);}
+  .status-badge.reparable{background:var(--danger-soft); color:var(--danger);}
+  .status-badge.externa{background:#4d8dcc22; color:#6fa8e8;}
+  .status-badge.confirmar{background:var(--warn-soft); color:var(--warn);}
+  .status-badge.desconocido{background:var(--surface-2); color:var(--text-muted);}
+  .stock-bar-track{height:4px; border-radius:2px; background:var(--border); margin-top:8px; overflow:hidden;}
+  .stock-bar-fill{height:100%; border-radius:2px;}
+
+  .type-tag{
+    font-size:9.5px; text-transform:uppercase; letter-spacing:.07em; font-weight:700;
+    padding:2px 6px; border-radius:4px; flex-shrink:0;
+  }
+  .type-tag.activo{background:#5b7fc722; color:#7ea0e0;}
+  .type-tag.repuesto{background:var(--accent-soft); color:var(--accent);}
+  .type-tag.insumo{background:#8a8fa022; color:#a6acc0;}
+
+  .empty-state{text-align:center; padding:60px 20px; color:var(--text-muted);}
+  .empty-state .icon{font-size:34px; margin-bottom:10px;}
+  .empty-state .title{font-size:14px; font-weight:600; color:var(--text);}
+  .empty-state .sub{font-size:12.5px; margin-top:4px;}
+
+  .section-label{font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:var(--text-muted); font-weight:600; margin:18px 0 10px;}
+
+  /* ---------- Bottom nav ---------- */
+  .bottomnav{
+    position:absolute; bottom:0; left:0; right:0;
+    display:flex; border-top:1px solid var(--border);
+    background:rgba(27,35,39,0.97); backdrop-filter:blur(8px);
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; color:var(--text-muted); font-family:var(--sans);
+    font-size:10px; padding:6px 2px; cursor:pointer; border-radius:8px;
+  }
+  .nav-btn.active{color:var(--accent);}
+  .nav-btn .nav-icon{font-size:19px;}
+
+  .fab{
+    position:absolute; right:16px; bottom:78px;
+    width:54px; height:54px; border-radius:50%;
+    background:var(--accent); color:#1a1108; border:none;
+    font-size:26px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px #00000055; cursor:pointer; z-index:5;
+  }
+
+  /* ---------- Modal / sheet ---------- */
+  .sheet-overlay{
+    position:absolute; inset:0; background:#000000aa; z-index:20;
+    display:flex; align-items:flex-end;
+  }
+  .sheet{
+    background:var(--surface); width:100%; max-height:92%; border-radius:18px 18px 0 0;
+    border:1px solid var(--border); border-bottom:none;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .sheet-handle{width:36px; height:4px; background:var(--border); border-radius:2px; margin:10px auto 4px;}
+  .sheet-header{display:flex; align-items:center; justify-content:space-between; padding:8px 16px 12px; border-bottom:1px solid var(--border);}
+  .sheet-title{font-size:15px; font-weight:700;}
+  .sheet-close{color:var(--text-muted); font-size:22px; background:none; border:none; cursor:pointer; line-height:1;}
+  .sheet-body{padding:16px; overflow-y:auto;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; font-weight:600;}
+  .field input, .field select, .field textarea{
+    width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:11px 12px; font-family:var(--sans); font-size:14px; outline:none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+
+  .btn{
+    width:100%; padding:13px; border-radius:9px; border:none; font-size:14.5px; font-weight:700;
+    cursor:pointer; font-family:var(--sans);
+  }
+  .btn-primary{background:var(--accent); color:#1a1108;}
+  .btn-ghost{background:var(--surface-2); color:var(--text); border:1px solid var(--border);}
+  .btn-danger{background:var(--danger-soft); color:var(--danger); border:1px solid var(--danger);}
+  .btn-row{display:flex; gap:10px; margin-top:6px;}
+  .btn-row .btn{flex:1;}
+
+  .stepper{display:flex; align-items:center; gap:10px; justify-content:center; margin:6px 0 14px;}
+  .stepper button{
+    width:46px; height:46px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--text); font-size:20px; cursor:pointer;
+  }
+  .stepper input{
+    width:90px; text-align:center; font-family:var(--mono); font-size:20px; font-weight:700;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px 0; color:var(--text);
+  }
+
+  .movement-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:12.5px;}
+  .movement-row:last-child{border-bottom:none;}
+  .mv-tag{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:5px; font-weight:700; text-transform:uppercase;}
+  .mv-tag.entrada{background:var(--ok-soft); color:var(--ok);}
+  .mv-tag.salida{background:var(--danger-soft); color:var(--danger);}
+  .mv-tag.ajuste_conteo{background:var(--warn-soft); color:var(--warn);}
+
+  .config-row{display:flex; justify-content:space-between; align-items:center; padding:13px 0; border-bottom:1px solid var(--border);}
+  .config-row:last-child{border-bottom:none;}
+  .config-row .k{font-size:13.5px;}
+  .config-row .v{font-size:12.5px; color:var(--text-muted); font-family:var(--mono);}
+
+  .toast{
+    position:absolute; bottom:80px; left:50%; transform:translateX(-50%);
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    padding:10px 18px; border-radius:20px; font-size:13px; z-index:50; white-space:nowrap;
+    box-shadow:0 4px 14px #00000055;
+  }
+
+  .tree-node{padding:10px 0; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:13.5px;}
+  .tree-child{padding-left:16px; color:var(--text-muted); font-size:12.5px;}
+  .count-badge{font-family:var(--mono); font-size:11px; color:var(--text-muted); background:var(--surface-2); padding:2px 8px; border-radius:10px;}
+
+  .asset-action-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin:12px 0;}
+  .asset-action-card .action-title{font-size:13px;font-weight:700;margin-bottom:5px;}
+  .asset-action-card .action-sub{font-size:11.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;}
+  .asset-history-row{padding:10px 0;border-bottom:1px solid var(--border);}
+  .asset-history-row:last-child{border-bottom:none;}
+  .asset-history-route{font-size:12.5px;font-weight:600;}
+  .asset-history-meta{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45;}
+  .asset-history-tag{display:inline-block;font-family:var(--mono);font-size:9.5px;padding:2px 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent);text-transform:uppercase;margin-right:5px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+/* ============================================================
+   BODEGA M1+ V10 — gestión de activos, inventario y trazabilidad
+   ============================================================
+   Este archivo funciona de dos formas:
+   1) MODO DEMO: sin configurar nada, corre con datos de ejemplo
+      guardados en memoria (se pierden al recargar). Sirve para
+      probar la interfaz y el flujo de trabajo.
+   2) MODO CONECTADO: al ingresar URL + anon key de Supabase en
+      "Config", la app lee/escribe contra las tablas creadas con
+      schema.sql y persiste de verdad (igual que Digitador M1+).
+============================================================ */
+
+const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+
+let supabaseClient = null;
+
+// Configuración persistente de Supabase.
+// La URL y la anon/public key se guardan solamente en este navegador.
+let supaConfig = {
+  // Configuración pública del proyecto Bodega M1+.
+  // La anon/public key no es una service_role key.
+  url: "https://sgcgpeudaukawemdxucj.supabase.co",
+  key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnY2dwZXVkYXVrYXdlbWR4dWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NTk4NjIsImV4cCI6MjEwMzQzNTg2Mn0.gPXzjxoWOOqtcjN6BC-EZwAFg08xuleb3sStLUBVddw"
+};
+
+// Guardar automáticamente la configuración en este navegador.
+localStorageSet("bodega_supabase_url", supaConfig.url);
+localStorageSet("bodega_supabase_key", supaConfig.key);
+
+// ---------- Datos de ejemplo (modo demo) ----------
+let categorias = [
+  { id:"cat-elec", nombre:"Eléctricos", padre:null },
+  { id:"cat-vfd", nombre:"Variadores de Frecuencia", padre:"cat-elec" },
+  { id:"cat-mec", nombre:"Mecánicos", padre:null },
+  { id:"cat-rod", nombre:"Rodamientos", padre:"cat-mec" },
+  { id:"cat-ins", nombre:"Insumos Generales", padre:null },
+];
+
+let activos = [];
+
+// Ubicaciones reales de terreno cargadas desde Supabase.
+let ubicaciones = [];
+
+let items = [
+  { id:"1", codigo:"VFD-ABB-0045", nombre:"Tarjeta de control ACS550", tipo:"repuesto", categoria_id:"cat-vfd", ubicacion:"Est. A - N2 - C5", unidad:"un", stock_actual:2, stock_minimo:3, proveedor:"ABB Chile", equipo_asociado:"Variador ABB ACS550" },
+  { id:"2", codigo:"VFD-ABB-0012", nombre:"Ventilador de enfriamiento VFD", tipo:"repuesto", categoria_id:"cat-vfd", ubicacion:"Est. A - N2 - C6", unidad:"un", stock_actual:8, stock_minimo:2, proveedor:"ABB Chile", equipo_asociado:"Variador ABB ACS550" },
+  { id:"3", codigo:"ROD-6205-2RS", nombre:"Rodamiento 6205-2RS", tipo:"repuesto", categoria_id:"cat-rod", ubicacion:"Est. B - N1 - C2", unidad:"un", stock_actual:14, stock_minimo:6, proveedor:"SKF" },
+  { id:"4", codigo:"ROD-6308-ZZ", nombre:"Rodamiento 6308-ZZ", tipo:"repuesto", categoria_id:"cat-rod", ubicacion:"Est. B - N1 - C3", unidad:"un", stock_actual:1, stock_minimo:4, proveedor:"SKF" },
+  { id:"5", codigo:"INS-GRASA-EP2", nombre:"Grasa industrial EP2", tipo:"insumo", categoria_id:"cat-ins", ubicacion:"Est. C - N3 - C1", unidad:"kg", stock_actual:22, stock_minimo:10, proveedor:"Distribuidora Lubrisur" },
+  { id:"6", codigo:"INS-TRAPO-IND", nombre:"Paño industrial absorbente", tipo:"insumo", categoria_id:"cat-ins", ubicacion:"Est. C - N1 - C4", unidad:"paq", stock_actual:0, stock_minimo:5, proveedor:"EPP Sur" },
+  { id:"7", codigo:"ACT-COMP-004", nombre:"Compresor de aire portátil 50L", tipo:"activo", categoria_id:"cat-mec", ubicacion:"Taller Central", unidad:"un", stock_actual:1, stock_minimo:1, proveedor:"—" },
+  { id:"8", codigo:"VFD-SIE-0089", nombre:"Módulo IGBT Sinamics G120", tipo:"repuesto", categoria_id:"cat-vfd", ubicacion:"Est. A - N2 - C8", unidad:"un", stock_actual:3, stock_minimo:2, proveedor:"Siemens", equipo_asociado:"Variador Siemens G120" },
+];
+
+let movimientos = [
+  { id:"m1", item_id:"1", tipo:"salida", cantidad:1, stock_resultante:2, motivo:"OT-1187 mantención preventiva", responsable:"J. Herrera", fecha:new Date(Date.now()-86400000*2).toISOString() },
+  { id:"m2", item_id:"4", tipo:"ajuste_conteo", cantidad:1, stock_resultante:1, motivo:"Conteo físico mensual", responsable:"C. Vidal", fecha:new Date(Date.now()-86400000*5).toISOString() },
+  { id:"m3", item_id:"6", tipo:"salida", cantidad:5, stock_resultante:0, motivo:"Consumo taller", responsable:"J. Herrera", fecha:new Date(Date.now()-86400000*1).toISOString() },
+];
+
+let currentUser = localStorageGet("bodega_user") || "";
+
+// ---------- localStorage helpers (fuera de artifacts esto funciona normal) ----------
+function localStorageGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function localStorageSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+// ---------- Estado de UI ----------
+let state = {
+  screen: currentUser ? "app" : "login",
+  tab: "catalogo",
+  search: "",
+  filterTipo: "todos",
+  filterCategoria: "todas",
+  sheet: null,        // 'nuevo-item' | 'detalle-item' | 'conteo' | 'config'
+  activeItemId: null,
+  activeActivoId: null,
+  toast: null,
+  filtroActivo: "todos",
+  searchActivo: "",
+  stockPatio: "",
+  stockSector: "",
+  stockZona: "",
+  stockPosicion: "",
+};
+
+function catNombre(id){
+  const c = categorias.find(c=>c.id===id);
+  return c ? c.nombre : "Sin categoría";
+}
+function ubicacionNombre(id){
+  const u = ubicaciones.find(u=>String(u.id)===String(id));
+  return u ? `${u.codigo} — ${u.descripcion}` : "Sin ubicación";
+}
+function ubicacionRuta(id){
+  const ruta=[];
+  let actual=ubicaciones.find(u=>String(u.id)===String(id));
+  const vistos=new Set();
+  while(actual && !vistos.has(String(actual.id))){
+    vistos.add(String(actual.id));
+    ruta.unshift(actual);
+    actual=actual.parent_id ? ubicaciones.find(u=>String(u.id)===String(actual.parent_id)) : null;
+  }
+  return ruta.map(u=>u.codigo).join(' → ');
+}
+function catPadre(id){
+  const c = categorias.find(c=>c.id===id);
+  if(!c || !c.padre) return null;
+  return categorias.find(p=>p.id===c.padre);
+}
+function stockLevel(item){
+  if(item.stock_actual <= 0) return "crit";
+  if(item.stock_actual < item.stock_minimo) return "warn";
+  return "ok";
+}
+function stockPct(item){
+  const ref = Math.max(item.stock_minimo*2, item.stock_actual, 1);
+  return Math.min(100, Math.round((item.stock_actual/ref)*100));
+}
+function fmtFecha(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short'}) + ' ' + d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+}
+function showToast(msg){
+  state.toast = msg;
+  render();
+  setTimeout(()=>{ state.toast=null; render(); }, 2200);
+}
+
+function filteredItems(){
+  let list = items.slice();
+  if(state.filterTipo !== "todos") list = list.filter(i=>i.tipo===state.filterTipo);
+  if(state.filterCategoria !== "todas") list = list.filter(i=>i.categoria_id===state.filterCategoria);
+  if(state.search.trim()){
+    const q = state.search.trim().toLowerCase();
+    list = list.filter(i =>
+      i.codigo.toLowerCase().includes(q) ||
+      i.nombre.toLowerCase().includes(q) ||
+      (i.equipo_asociado||"").toLowerCase().includes(q) ||
+      (i.proveedor||"").toLowerCase().includes(q)
+    );
+  }
+  return list;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render(){
+  const root = document.getElementById('root');
+  if(state.screen === "login"){
+    root.innerHTML = renderLogin();
+    bindLogin();
+    return;
+  }
+  root.innerHTML = `
+    ${renderTopbar()}
+    <div class="content" id="content">${renderTab()}</div>
+    ${renderFab()}
+    ${renderBottomNav()}
+    ${state.sheet ? renderSheet() : ""}
+    ${state.toast ? `<div class="toast">${state.toast}</div>` : ""}
+  `;
+  bindGlobal();
+}
+
+function renderLogin(){
+  return `
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:32px;text-align:center;">
+    <div class="brand-mark" style="width:56px;height:56px;font-size:20px;margin-bottom:18px;">BM</div>
+    <div style="font-size:11px;letter-spacing:.16em;color:var(--text-muted);text-transform:uppercase;">Gestión de Bodega</div>
+    <div style="font-size:22px;font-weight:800;margin:4px 0 28px;">BODEGA M1+</div>
+    <div class="field" style="width:100%;max-width:280px;text-align:left;">
+      <label>Tu nombre / ID</label>
+      <input id="login-name" placeholder="Ej: J. Herrera" />
+    </div>
+    <button class="btn btn-primary" id="login-btn" style="max-width:280px;margin-top:8px;">Ingresar</button>
+    <div style="font-size:11.5px;color:var(--text-muted);margin-top:18px;max-width:280px;">
+      La conexión con Supabase se realiza automáticamente al iniciar.
+    </div>
+  </div>`;
+}
+function bindLogin(){
+  document.getElementById('login-btn').onclick = ()=>{
+    const v = document.getElementById('login-name').value.trim();
+    if(!v) return;
+    currentUser = v;
+    localStorageSet("bodega_user", v);
+    state.screen = "app";
+    render();
+  };
+}
+
+function renderTopbar(){
+  return `
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">BM</div>
+      <div class="brand-text">
+        <div class="t1">Bodega M1+</div>
+        <div class="t2">${tabTitle()}</div>
+      </div>
+    </div>
+    <div class="live-pill"><span class="live-dot"></span>${supabaseClient ? "CONECTADO" : "DEMO"}</div>
+  </div>`;
+}
+function tabTitle(){
+  return {catalogo:"Catálogo", stock:"Consulta de Stock", activos:"Activos", conteo:"Conteo de Stock", categorias:"Clasificación", movimientos:"Movimientos", config:"Config"}[state.tab] || "";
+}
+
+function renderBottomNav(){
+  const tabs = [
+    {id:"catalogo", icon:"▤", label:"Catálogo"},
+    {id:"stock", icon:"⌕", label:"Consulta"},
+    {id:"activos", icon:"⚙", label:"Activos"},
+    {id:"conteo", icon:"✓", label:"Conteo"},
+    {id:"movimientos", icon:"↕", label:"Historial"},
+    {id:"config", icon:"⚙", label:"Config"},
+  ];
+  return `<div class="bottomnav">
+    ${tabs.map(t=>`
+      <button class="nav-btn ${state.tab===t.id?'active':''}" data-tab="${t.id}">
+        <span class="nav-icon">${t.icon}</span>${t.label}
+      </button>`).join('')}
+  </div>`;
+}
+
+function renderFab(){
+  if(state.tab !== "catalogo") return "";
+  return `<button class="fab" id="fab-add">+</button>`;
+}
+
+function renderTab(){
+  if(state.tab === "catalogo") return renderCatalogo();
+  if(state.tab === "stock") return renderConsultaStock();
+  if(state.tab === "activos") return renderActivos();
+  if(state.tab === "categorias") return renderCategorias();
+  if(state.tab === "conteo") return renderConteoTab();
+  if(state.tab === "movimientos") return renderMovimientos();
+  if(state.tab === "config") return renderConfig();
+  return "";
+}
+
+function renderCatalogo(){
+  const list = filteredItems();
+  const total = items.length;
+  const critCount = items.filter(i=>stockLevel(i)==="crit").length;
+  const warnCount = items.filter(i=>stockLevel(i)==="warn").length;
+
+  return `
+  <div class="stats-grid">
+    <div class="stat-card"><div class="num">${total}</div><div class="label">Ítems totales</div></div>
+    <div class="stat-card crit"><div class="num">${critCount}</div><div class="label">Sin stock</div></div>
+    <div class="stat-card warn"><div class="num">${warnCount}</div><div class="label">Bajo mínimo</div></div>
+    <div class="stat-card ok"><div class="num">${total-critCount-warnCount}</div><div class="label">Stock OK</div></div>
+  </div>
+
+  <div class="search-row">
+    <div class="search-box">
+      <span>🔍</span>
+      <input id="search-input" placeholder="Buscar por código, nombre, equipo..." value="${state.search}" />
+    </div>
+  </div>
+
+  <div class="chip-row" id="chip-tipo">
+    <div class="chip ${state.filterTipo==='todos'?'active':''}" data-tipo="todos">Todos</div>
+    <div class="chip ${state.filterTipo==='activo'?'active':''}" data-tipo="activo">Activos</div>
+    <div class="chip ${state.filterTipo==='repuesto'?'active':''}" data-tipo="repuesto">Repuestos</div>
+    <div class="chip ${state.filterTipo==='insumo'?'active':''}" data-tipo="insumo">Insumos</div>
+  </div>
+
+  <div class="chip-row" id="chip-cat">
+    <div class="chip ${state.filterCategoria==='todas'?'active':''}" data-cat="todas">Todas las categorías</div>
+    ${categorias.filter(c=>c.padre).map(c=>`<div class="chip ${state.filterCategoria===c.id?'active':''}" data-cat="${c.id}">${c.nombre}</div>`).join('')}
+  </div>
+
+  ${list.length===0 ? `
+    <div class="empty-state">
+      <div class="icon">📦</div>
+      <div class="title">No se encontraron ítems</div>
+      <div class="sub">Ajusta la búsqueda o los filtros, o agrega uno nuevo con el botón +</div>
+    </div>` :
+    list.map(i=>renderItemCard(i)).join('')
+  }
+  `;
+}
+
+function renderItemCard(i){
+  const lvl = stockLevel(i);
+  const pct = stockPct(i);
+  const barColor = lvl==='ok' ? 'var(--ok)' : lvl==='warn' ? 'var(--warn)' : 'var(--danger)';
+  return `
+  <div class="item-card" data-item="${i.id}">
+    <div class="item-thumb">${i.foto_url ? `<img src="${i.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : '📦'}</div>
+    <div class="item-main">
+      <div class="item-top">
+        <div>
+          <div class="item-code">${i.codigo}</div>
+          <div class="item-name">${i.nombre}</div>
+        </div>
+        <div class="stock-badge ${lvl}">${i.stock_actual} ${i.unidad}</div>
+      </div>
+      <div class="item-meta">
+        <span class="type-tag ${i.tipo}">${i.tipo}</span>
+        <span class="dot-sep"></span>
+        <span>${catNombre(i.categoria_id)}</span>
+        <span class="dot-sep"></span>
+        <span>${i.ubicacion || 'Sin ubicación'}</span>
+      </div>
+      <div class="stock-bar-track"><div class="stock-bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
+    </div>
+  </div>`;
+}
+
+
+function ubicacionesHijas(parentId){
+  return ubicaciones.filter(u=>String(u.parent_id||'')===String(parentId||''));
+}
+function ubicacionPorCodigo(codigo){
+  return ubicaciones.find(u=>u.codigo===codigo) || null;
+}
+function activosEnUbicacion(id){
+  if(!id) return [];
+  const ids = new Set([id]);
+  let changed = true;
+  while(changed){
+    changed = false;
+    ubicaciones.forEach(u=>{
+      if(u.parent_id && ids.has(u.parent_id) && !ids.has(u.id)){
+        ids.add(u.id); changed = true;
+      }
+    });
+  }
+  return activos.filter(a=>a.ubicacion_id && ids.has(a.ubicacion_id));
+}
+
+function potenciaKW(a){
+  if(a == null) return null;
+  const raw = typeof a === 'object' ? (a.potencia ?? '') : a;
+  const s = String(raw).replace(',', '.');
+  const m = s.match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : null;
+}
+
+function rangoPotenciaDePosicion(u){
+  if(!u) return null;
+  const texto = `${u.codigo || ''} ${u.descripcion || ''}`;
+  const m = texto.match(/(\d+(?:[.,]\d+)?)\s*(?:a|-|–|—)\s*(\d+(?:[.,]\d+)?)\s*kW/i);
+  if(!m) return null;
+  return { min:Number(m[1].replace(',','.')), max:Number(m[2].replace(',','.')) };
+}
+
+function activosPorRangoPotencia(rango){
+  if(!rango) return [];
+  return activos.filter(a=>{
+    if(a.tipo_activo !== 'motor') return false;
+    const kw = potenciaKW(a);
+    return kw !== null && kw >= rango.min && kw <= rango.max;
+  });
+}
+
+function renderConsultaStock(){
+  const patios = ubicaciones.filter(u=>u.nivel==='patio' || /^PATIO-/.test(u.codigo));
+  const patio = ubicaciones.find(u=>String(u.id)===String(state.stockPatio));
+  const sectores = patio ? ubicacionesHijas(patio.id) : [];
+  const sector = ubicaciones.find(u=>String(u.id)===String(state.stockSector));
+  const zonas = sector ? ubicacionesHijas(sector.id) : [];
+  const zona = ubicaciones.find(u=>String(u.id)===String(state.stockZona));
+  const posiciones = zona ? ubicacionesHijas(zona.id) : [];
+
+  let resultados = [];
+  if(state.stockPatio){
+    resultados = activosEnUbicacion(state.stockPatio);
+    if(state.stockSector) resultados = resultados.filter(a=>activosEnUbicacion(state.stockSector).some(x=>x.id===a.id));
+    if(state.stockZona) resultados = resultados.filter(a=>activosEnUbicacion(state.stockZona).some(x=>x.id===a.id));
+    if(state.stockPosicion) resultados = resultados.filter(a=>String(a.ubicacion_id)===String(state.stockPosicion));
+  }
+
+  const selectedPath = [patio,sector,zona,ubicaciones.find(u=>String(u.id)===String(state.stockPosicion))].filter(Boolean)
+    .map(u=>u.descripcion || u.codigo).join(' / ');
+
+  return `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:19px;font-weight:700;">Consulta de stock</div>
+      <div class="item-meta" style="margin-top:5px;">Encuentra rápidamente qué activos tienes y dónde están.</div>
+    </div>
+
+    <div class="section-label">Ubicación</div>
+    <div class="field"><label>1. Patio</label>
+      <select id="stock-patio">
+        <option value="">Selecciona un patio</option>
+        ${patios.map(u=>`<option value="${u.id}" ${state.stockPatio===u.id?'selected':''}>${u.codigo} — ${u.descripcion}</option>`).join('')}
+      </select>
+    </div>
+
+    ${state.stockPatio ? `<div class="field"><label>2. Sector</label>
+      <select id="stock-sector">
+        <option value="">Todos los sectores</option>
+        ${sectores.map(u=>`<option value="${u.id}" ${state.stockSector===u.id?'selected':''}>${u.descripcion}</option>`).join('')}
+      </select>
+    </div>` : ''}
+
+    ${state.stockSector ? `<div class="field"><label>3. Zona</label>
+      <select id="stock-zona">
+        <option value="">Todas las zonas</option>
+        ${zonas.map(u=>`<option value="${u.id}" ${state.stockZona===u.id?'selected':''}>${u.descripcion}</option>`).join('')}
+      </select>
+    </div>` : ''}
+
+    ${state.stockZona ? `<div class="field"><label>4. Posición</label>
+      <select id="stock-posicion">
+        <option value="">Todas las posiciones</option>
+        ${posiciones.map(u=>`<option value="${u.id}" ${state.stockPosicion===u.id?'selected':''}>${u.codigo} — ${u.descripcion}</option>`).join('')}
+      </select>
+    </div>` : ''}
+
+    ${state.stockPosicion ? (() => {
+      const pos = ubicaciones.find(u=>String(u.id)===String(state.stockPosicion));
+      const rango = rangoPotenciaDePosicion(pos);
+      const activosPotencia = activosPorRangoPotencia(rango);
+      if(!rango) return `<div class="stat-card" style="margin:12px 0 14px;">
+        <div class="label">5. ACTIVOS</div>
+        <div class="item-meta" style="margin-top:7px;">No se pudo determinar el rango de potencia de esta posición.</div>
+      </div>`;
+      return `<div style="margin:12px 0 14px;">
+        <div class="section-label">5. Activos por potencia</div>
+        <div class="stat-card" style="margin-bottom:10px;">
+          <div class="num">${activosPotencia.length}</div>
+          <div class="label">Motores entre ${rango.min} y ${rango.max} kW</div>
+        </div>
+        ${activosPotencia.length===0
+          ? `<div class="empty-state" style="padding:24px 10px;"><div class="icon">⚙️</div><div class="title">Sin motores en este rango</div><div class="sub">Cuando carguemos los motores del inventario, aparecerán aquí sus códigos.</div></div>`
+          : activosPotencia.map(a=>`
+            <div class="item-card" data-activo="${a.id}" style="margin-bottom:8px;">
+              <div class="item-thumb">⚙️</div>
+              <div class="item-main">
+                <div class="item-top">
+                  <div>
+                    <div class="item-code">${a.codigo || 'SIN CÓDIGO'}</div>
+                    <div class="item-name">${a.nombre || 'Motor'}</div>
+                  </div>
+                </div>
+                <div class="item-meta">
+                  <span>${a.potencia || '—'}</span>
+                  ${a.marca ? `<span class="dot-sep"></span><span>${a.marca}</span>` : ''}
+                  ${a.modelo ? `<span class="dot-sep"></span><span>${a.modelo}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `).join('')}
+      </div>`;
+    })() : ''}
+
+    ${state.stockPatio ? `
+      <div class="stat-card" style="margin:12px 0 14px;">
+        <div class="num">${resultados.length}</div>
+        <div class="label">Activos encontrados</div>
+        ${selectedPath ? `<div class="item-meta" style="margin-top:8px;">📍 ${selectedPath}</div>` : ''}
+      </div>
+      ${resultados.length===0 ? `<div class="empty-state"><div class="icon">🔎</div><div class="title">Sin activos en esta selección</div><div class="sub">Prueba con un nivel superior o cambia el filtro.</div></div>` : resultados.map(a=>renderActivoCard(a)).join('')}
+    ` : `
+      <div class="empty-state"><div class="icon">📍</div><div class="title">Selecciona un patio</div><div class="sub">Luego iremos mostrando solo los sectores, zonas y posiciones que correspondan.</div></div>
+    `}
+  `;
+}
+
+function bindConsultaStock(){
+  const patio = document.getElementById('stock-patio');
+  if(patio) patio.onchange = e=>{
+    state.stockPatio=e.target.value; state.stockSector=''; state.stockZona=''; state.stockPosicion=''; render();
+  };
+  const sector = document.getElementById('stock-sector');
+  if(sector) sector.onchange = e=>{
+    state.stockSector=e.target.value; state.stockZona=''; state.stockPosicion=''; render();
+  };
+  const zona = document.getElementById('stock-zona');
+  if(zona) zona.onchange = e=>{
+    state.stockZona=e.target.value; state.stockPosicion=''; render();
+  };
+  const posicion = document.getElementById('stock-posicion');
+  if(posicion) posicion.onchange = e=>{ state.stockPosicion=e.target.value; render(); };
+}
+
+function renderActivos(){
+  let list = activos.slice();
+  if(state.filtroActivo !== "todos") list = list.filter(a=>a.tipo_activo===state.filtroActivo);
+  if(state.searchActivo.trim()){
+    const q = state.searchActivo.trim().toLowerCase();
+    list = list.filter(a =>
+      (a.codigo||"").toLowerCase().includes(q) ||
+      (a.nombre||"").toLowerCase().includes(q) ||
+      (a.marca||"").toLowerCase().includes(q) ||
+      (a.modelo||"").toLowerCase().includes(q) ||
+      (a.ubicacion||"").toLowerCase().includes(q)
+    );
+  }
+  const motores = activos.filter(a=>a.tipo_activo==='motor').length;
+  const bombas = activos.filter(a=>a.tipo_activo==='bomba').length;
+  const vdfs = activos.filter(a=>a.tipo_activo==='vdf').length;
+  const cprs = activos.filter(a=>a.tipo_activo==='cpr').length;
+  return `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Activos totales</div></div>
+      <div class="stat-card ok"><div class="num">${motores}</div><div class="label">Motores</div></div>
+      <div class="stat-card"><div class="num">${bombas}</div><div class="label">Bombas</div></div>
+      <div class="stat-card warn"><div class="num">${vdfs}</div><div class="label">VDF</div></div>
+      <div class="stat-card"><div class="num">${cprs}</div><div class="label">CPR</div></div>
+    </div>
+    <div class="search-row">
+      <div class="search-box"><span>🔍</span><input id="search-activo" placeholder="Buscar activo, marca, modelo..." value="${state.searchActivo}" /></div>
+    </div>
+    <div class="chip-row" id="chip-activo">
+      <div class="chip ${state.filtroActivo==='todos'?'active':''}" data-activo="todos">Todos</div>
+      <div class="chip ${state.filtroActivo==='motor'?'active':''}" data-activo="motor">⚙️ Motores</div>
+      <div class="chip ${state.filtroActivo==='bomba'?'active':''}" data-activo="bomba">💧 Bombas</div>
+      <div class="chip ${state.filtroActivo==='vdf'?'active':''}" data-activo="vdf">🔌 VDF</div>
+      <div class="chip ${state.filtroActivo==='cpr'?'active':''}" data-activo="cpr">🔩 CPR</div>
+    </div>
+    ${list.length===0 ? `<div class="empty-state"><div class="icon">⚙️</div><div class="title">No se encontraron activos</div><div class="sub">Ajusta la búsqueda o selecciona otra subdivisión.</div></div>` : list.map(a=>renderActivoCard(a)).join('')}
+  `;
+}
+
+function estadoClase(a){
+  const color = String(a?.estado_color || '').trim().toLowerCase();
+  if(color === 'green') return 'reparado';
+  if(color === 'red') return 'reparable';
+  if(color === 'blue') return 'externa';
+  if(color === 'yellow') return 'confirmar';
+
+  const estado = String(a?.estado || '').trim().toUpperCase();
+  if(estado === 'REPARADO' || estado === 'NUEVO') return 'reparado';
+  if(estado === 'REPARABLE') return 'reparable';
+  if(estado === 'REPARACIÓN EXTERNA' || estado === 'REPARACION EXTERNA') return 'externa';
+  if(estado === 'POR CONFIRMAR') return 'confirmar';
+  return 'desconocido';
+}
+
+function renderActivoCard(a){
+  const icon = a.tipo_activo==='motor' ? '⚙️' : a.tipo_activo==='bomba' ? '💧' : a.tipo_activo==='vdf' ? '🔌' : '🔩';
+  const technical = [a.potencia, a.tension ? `${a.tension} V` : null, a.rpm ? `${a.rpm} RPM` : null].filter(Boolean).join(' · ');
+  const loc = a.ubicacion_id ? ubicacionNombre(a.ubicacion_id) : 'Sin ubicación';
+  const ruta = a.ubicacion_id ? ubicacionRuta(a.ubicacion_id) : '';
+  return `
+  <div class="item-card" data-activo="${a.id}">
+    <div class="item-thumb">${icon}</div>
+    <div class="item-main">
+      <div class="item-top">
+        <div>
+          <div class="item-code">${a.codigo||'SIN CÓDIGO'}</div>
+          <div class="item-name">${a.nombre||'Activo sin nombre'}</div>
+        </div>
+        <div class="status-badge ${estadoClase(a)}">${a.estado||'—'}</div>
+      </div>
+      <div class="item-meta">
+        <span class="type-tag activo">${a.tipo_activo}</span>
+        <span class="dot-sep"></span>
+        <span>${a.marca||'Sin marca'}${a.modelo ? ' · '+a.modelo : ''}</span>
+      </div>
+      <div class="item-meta" style="margin-top:6px;">${technical||'Sin especificaciones técnicas'} · 📍 ${loc}</div>
+      ${ruta ? `<div class="item-meta" style="margin-top:4px;">🧭 ${ruta}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function sheetDetalleActivo(){
+  const a = activos.find(x=>x.id===state.activeActivoId);
+  if(!a) return '';
+
+  const tipoLabel = a.tipo_activo==='motor' ? 'MOTOR' :
+                    a.tipo_activo==='bomba' ? 'BOMBA' :
+                    a.tipo_activo==='vdf' ? 'VDF' : 'CPR';
+
+  const historial = movimientos
+    .filter(m=>String(m.activo_id||'')===String(a.id))
+    .sort((x,y)=>new Date(y.fecha||y.created_at)-new Date(x.fecha||x.created_at));
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div class="item-code" style="font-size:12.5px;">${a.codigo||'SIN CÓDIGO'}</div>
+        <div style="font-size:18px;font-weight:700;margin-top:3px;">${a.nombre||'Activo sin nombre'}</div>
+        <div class="item-meta" style="margin-top:6px;">
+          <span class="type-tag activo">${tipoLabel}</span>
+          ${a.subtipo ? `<span class="dot-sep"></span><span>${a.subtipo}</span>` : ''}
+          <span class="dot-sep"></span><span class="status-badge ${estadoClase(a)}">${a.estado||'Sin estado'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Especificaciones técnicas</div>
+    <div class="field-row">
+      <div class="field"><label>Marca</label><div>${a.marca||'—'}</div></div>
+      <div class="field"><label>Modelo</label><div>${a.modelo||'—'}</div></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Potencia</label><div>${a.potencia||'—'}</div></div>
+      <div class="field"><label>Corriente</label><div>${a.corriente!=null ? a.corriente+' A':'—'}</div></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Frame</label><div>${a.frame||'—'}</div></div>
+      <div class="field"><label>Tensión</label><div>${a.tension!=null ? a.tension+' V':'—'}</div></div>
+    </div>
+    <div class="field"><label>RPM</label><div>${a.rpm!=null ? a.rpm:'—'}</div></div>
+
+    <div class="section-label">Ubicación actual</div>
+    <div class="field">
+      <div class="item-meta" style="margin-bottom:8px;">${a.ubicacion_id ? '🧭 ' + ubicacionRuta(a.ubicacion_id) : '📍 Sin ubicación asignada'}</div>
+      <select id="activo-ubicacion">
+        <option value="">— Sin ubicación —</option>
+        ${ubicaciones
+          .filter(u=>u.nivel==='posicion')
+          .slice()
+          .sort((x,y)=>(x.codigo||'').localeCompare(y.codigo||''))
+          .map(u=>`
+          <option value="${u.id}" ${String(a.ubicacion_id||'')===String(u.id)?'selected':''}>
+            ${u.codigo} — ${u.descripcion}
+          </option>
+        `).join('')}
+      </select>
+    </div>
+
+    <div class="asset-action-card">
+      <div class="action-title">Mover activo</div>
+      <div class="action-sub">
+        El movimiento cambia la ubicación actual y registra automáticamente
+        origen, destino, usuario, fecha y motivo en el historial.
+      </div>
+      <div class="field">
+        <label>Nueva posición</label>
+        <select id="mover-activo-destino">
+          <option value="">— Selecciona una posición —</option>
+          ${ubicaciones
+            .filter(u=>u.nivel==='posicion')
+            .slice()
+            .sort((x,y)=>(x.codigo||'').localeCompare(y.codigo||''))
+            .map(u=>`
+            <option value="${u.id}" ${String(a.ubicacion_id||'')===String(u.id)?'disabled':''}>
+              ${u.codigo} — ${u.descripcion}
+            </option>
+          `).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>Motivo del traslado</label>
+        <input id="mover-activo-motivo" placeholder="Ej: Traslado a operación / cambio de patio">
+      </div>
+      <button class="btn btn-primary" id="mover-activo-btn">Registrar movimiento</button>
+    </div>
+
+    <button class="btn btn-ghost" id="guardar-ubicacion-activo">Guardar ubicación sin movimiento</button>
+
+    <div class="section-label">Historial de movimientos del activo</div>
+    ${historial.length===0
+      ? `<div style="font-size:12.5px;color:var(--text-muted);padding:4px 0 10px;">Sin movimientos registrados para este activo.</div>`
+      : historial.slice(0,20).map(m=>{
+          const origen = m.ubicacion_origen_id ? ubicacionRuta(m.ubicacion_origen_id) : 'Sin origen';
+          const destino = m.ubicacion_destino_id ? ubicacionRuta(m.ubicacion_destino_id) : 'Sin destino';
+          return `
+          <div class="asset-history-row">
+            <div class="asset-history-route">
+              <span class="asset-history-tag">${m.tipo_movimiento||'traslado'}</span>
+              ${origen} → ${destino}
+            </div>
+            <div class="asset-history-meta">
+              ${m.motivo||'Sin motivo'} · ${m.responsable||currentUser||'—'} · ${fmtFecha(m.fecha||m.created_at)}
+            </div>
+          </div>`;
+        }).join('')}
+
+    <div class="field" style="margin-top:14px;">
+      <label>Observaciones</label>
+      <div>${a.observaciones||'—'}</div>
+    </div>
+  `;
+}
+
+async function onMoverActivo(){
+  const a = activos.find(x=>String(x.id)===String(state.activeActivoId));
+  const destinoSelect = document.getElementById('mover-activo-destino');
+  const motivoInput = document.getElementById('mover-activo-motivo');
+  const btn = document.getElementById('mover-activo-btn');
+
+  if(!a || !destinoSelect || !motivoInput) return;
+
+  const destinoId = destinoSelect.value || null;
+  const motivo = motivoInput.value.trim();
+
+  if(!destinoId){
+    showToast("Selecciona una nueva posición");
+    return;
+  }
+  if(String(destinoId)===String(a.ubicacion_id||'')){
+    showToast("El activo ya está en esa posición");
+    return;
+  }
+  if(!motivo){
+    showToast("Ingresa el motivo del traslado");
+    return;
+  }
+  if(!supabaseClient){
+    showToast("Sin conexión a Supabase");
+    return;
+  }
+
+  const origenId = a.ubicacion_id || null;
+
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = "Registrando...";
+  }
+
+  try{
+    // Primero actualizamos el activo.
+    const { error: updateError } = await supabaseClient
+      .from('activos')
+      .update({ ubicacion_id: destinoId })
+      .eq('id', a.id);
+
+    if(updateError) throw updateError;
+
+    // Luego dejamos trazabilidad del traslado.
+    const payload = {
+      activo_id: a.id,
+      ubicacion_origen_id: origenId,
+      ubicacion_destino_id: destinoId,
+      tipo_movimiento: 'traslado',
+      motivo,
+      responsable: currentUser || null
+    };
+
+    const { data: movData, error: movError } = await supabaseClient
+      .from('movimientos')
+      .insert([payload])
+      .select()
+      .single();
+
+    if(movError){
+      // Intentamos revertir el activo si el historial no pudo registrarse.
+      if(origenId){
+        await supabaseClient.from('activos').update({ ubicacion_id: origenId }).eq('id', a.id);
+      }else{
+        await supabaseClient.from('activos').update({ ubicacion_id: null }).eq('id', a.id);
+      }
+      throw movError;
+    }
+
+    a.ubicacion_id = destinoId;
+    movimientos.unshift({
+      ...(movData || payload),
+      fecha: movData?.created_at || new Date().toISOString()
+    });
+
+    showToast("Activo trasladado y movimiento registrado");
+    render();
+  }catch(e){
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = "Registrar movimiento";
+    }
+    showToast("No se pudo registrar el traslado: " + (e.message || "error"));
+  }
+}
+
+async function onGuardarUbicacionActivo(){
+  const a = activos.find(x=>x.id===state.activeActivoId);
+  const select = document.getElementById('activo-ubicacion');
+  if(!a || !select) return;
+
+  const ubicacionId = select.value || null;
+
+  if(!supabaseClient){
+    showToast("Sin conexión a Supabase");
+    return;
+  }
+
+  const btn = document.getElementById('guardar-ubicacion-activo');
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+  }
+
+  const { error } = await supabaseClient
+    .from('activos')
+    .update({ ubicacion_id: ubicacionId })
+    .eq('id', a.id);
+
+  if(error){
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = "Guardar ubicación";
+    }
+    showToast("Error al guardar ubicación: " + error.message);
+    return;
+  }
+
+  a.ubicacion_id = ubicacionId;
+  showToast(ubicacionId ? "Ubicación actualizada" : "Ubicación eliminada");
+  render();
+}
+
+function renderCategorias(){
+  const padres = categorias.filter(c=>!c.padre);
+  return `
+  <div class="section-label">Árbol de clasificación</div>
+  ${padres.map(p=>{
+    const hijos = categorias.filter(c=>c.padre===p.id);
+    const countPadre = items.filter(i=>i.categoria_id===p.id).length;
+    return `
+    <div class="tree-node">
+      <span style="font-weight:700;">${p.nombre}</span>
+      <span class="count-badge">${countPadre + hijos.reduce((s,h)=>s+items.filter(i=>i.categoria_id===h.id).length,0)} ítems</span>
+    </div>
+    ${hijos.map(h=>`
+      <div class="tree-node tree-child">
+        <span>↳ ${h.nombre}</span>
+        <span class="count-badge">${items.filter(i=>i.categoria_id===h.id).length} ítems</span>
+      </div>
+    `).join('')}
+    `;
+  }).join('')}
+  <div class="section-label">Agregar categoría</div>
+  <div class="field">
+    <input id="new-cat-name" placeholder="Nombre de la nueva categoría o subcategoría" />
+  </div>
+  <div class="field">
+    <select id="new-cat-padre">
+      <option value="">— Categoría raíz (sin padre) —</option>
+      ${padres.map(p=>`<option value="${p.id}">Subcategoría de: ${p.nombre}</option>`).join('')}
+    </select>
+  </div>
+  <button class="btn btn-primary" id="add-cat-btn">Agregar categoría</button>
+  `;
+}
+
+function renderConteoTab(){
+  const list = items.slice().sort((a,b)=> stockLevel(a)==='crit'?-1:1);
+  return `
+  <div class="section-label">Conteo rápido de stock</div>
+  <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
+    Toca un ítem para registrar el conteo físico y ajustar su stock actual.
+  </div>
+  ${list.map(i=>renderItemCard(i)).join('')}
+  `;
+}
+
+function renderMovimientos(){
+  const list = movimientos.slice().sort((a,b)=> new Date(b.fecha||b.created_at)-new Date(a.fecha||a.created_at));
+
+  return `
+  <div class="section-label">Historial de movimientos</div>
+  ${list.length===0 ? `<div class="empty-state"><div class="icon">↕</div><div class="title">Sin movimientos</div></div>` :
+  `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px 14px;">
+    ${list.map(m=>{
+      const it = items.find(i=>String(i.id)===String(m.item_id));
+      const ac = activos.find(a=>String(a.id)===String(m.activo_id));
+      const fecha = m.fecha||m.created_at;
+
+      if(ac){
+        const origen = m.ubicacion_origen_id ? ubicacionRuta(m.ubicacion_origen_id) : 'Sin origen';
+        const destino = m.ubicacion_destino_id ? ubicacionRuta(m.ubicacion_destino_id) : 'Sin destino';
+        return `
+        <div class="movement-row">
+          <div>
+            <div style="font-weight:600;">${ac.codigo||ac.nombre||'Activo'}</div>
+            <div style="color:var(--text-muted);margin-top:2px;">${origen} → ${destino}</div>
+            <div style="color:var(--text-muted);margin-top:2px;">${m.motivo||''} · ${m.responsable||''} · ${fmtFecha(fecha)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mv-tag ajuste_conteo">${m.tipo_movimiento||'traslado'}</div>
+          </div>
+        </div>`;
+      }
+
+      return `
+      <div class="movement-row">
+        <div>
+          <div style="font-weight:600;">${it ? it.nombre : 'Movimiento de ítem'}</div>
+          <div style="color:var(--text-muted);margin-top:2px;">${m.motivo||''} · ${m.responsable||''} · ${fmtFecha(fecha)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="mv-tag ${m.tipo||'ajuste_conteo'}">${(m.tipo||'movimiento').replace('_',' ')}</div>
+          <div style="font-family:var(--mono);margin-top:4px;">${m.tipo==='salida'?'-':'+'}${m.cantidad??''}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`}
+  `;
+}
+
+function renderConfig(){
+  return `
+  <div class="section-label">Mi cuenta</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2px 14px;margin-bottom:18px;">
+    <div class="config-row"><span class="k">Usuario</span><span class="v">${currentUser}</span></div>
+    <div class="config-row"><span class="k">Modo</span><span class="v">${supabaseClient ? 'Conectado a Supabase' : 'Demo (en memoria)'}</span></div>
+  </div>
+
+  <div class="section-label">Conexión Supabase</div>
+  <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">
+    La conexión está configurada para este proyecto. La aplicación intentará conectarse automáticamente al iniciar.
+  </div>
+  <div class="field"><label>Supabase URL</label><input id="cfg-url" placeholder="https://xxxx.supabase.co" value="${supaConfig.url}"></div>
+  <div class="field"><label>Anon Public Key</label><input id="cfg-key" placeholder="eyJhbGciOi..." value="${supaConfig.key}"></div>
+  <button class="btn btn-primary" id="cfg-connect-btn">${supabaseClient ? 'Reconectar' : 'Conectar a Supabase'}</button>
+
+  <div class="section-label">Exportar</div>
+  <button class="btn btn-ghost" id="export-btn">Exportar catálogo a CSV</button>
+
+  <div class="section-label">Zona de peligro</div>
+  <button class="btn btn-danger" id="logout-btn">Cerrar sesión</button>
+  `;
+}
+
+// ============================================================
+// SHEETS (modales)
+// ============================================================
+function renderSheet(){
+  if(state.sheet === "nuevo-item") return sheetWrap("Nuevo Ítem", sheetNuevoItem());
+  if(state.sheet === "detalle-item") return sheetWrap("Ficha de Ítem", sheetDetalleItem());
+  if(state.sheet === "detalle-activo") return sheetWrap("Ficha de Activo", sheetDetalleActivo());
+  return "";
+}
+function sheetWrap(title, body){
+  return `
+  <div class="sheet-overlay" id="sheet-overlay">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">${title}</div>
+        <button class="sheet-close" id="sheet-close">×</button>
+      </div>
+      <div class="sheet-body">${body}</div>
+    </div>
+  </div>`;
+}
+
+function sheetNuevoItem(){
+  return `
+  <div class="field"><label>Tipo</label>
+    <select id="ni-tipo">
+      <option value="repuesto">Repuesto</option>
+      <option value="insumo">Insumo</option>
+      <option value="activo">Activo</option>
+    </select>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Código</label><input id="ni-codigo" placeholder="Ej: VFD-ABB-0099"></div>
+    <div class="field"><label>Unidad</label><input id="ni-unidad" placeholder="un / kg / mt" value="un"></div>
+  </div>
+  <div class="field"><label>Nombre</label><input id="ni-nombre" placeholder="Nombre del ítem"></div>
+  <div class="field"><label>Categoría</label>
+    <select id="ni-categoria">
+      <option value="">Sin categoría</option>
+      ${categorias.map(c=>`<option value="${c.id}">${c.padre ? '↳ ' : ''}${c.nombre}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Stock actual</label><input id="ni-stock" type="number" value="0"></div>
+    <div class="field"><label>Stock mínimo</label><input id="ni-minimo" type="number" value="0"></div>
+  </div>
+  <div class="field"><label>Ubicación en bodega</label><input id="ni-ubicacion" placeholder="Ej: Estante A - Nivel 2 - Casillero 5"></div>
+  <div class="field"><label>Proveedor</label><input id="ni-proveedor" placeholder="Opcional"></div>
+  <div class="field"><label>Equipo asociado</label><input id="ni-equipo" placeholder="Ej: Variador ABB ACS550 (opcional)"></div>
+  <button class="btn btn-primary" id="ni-guardar">Guardar ítem</button>
+  `;
+}
+
+function sheetDetalleItem(){
+  const i = items.find(x=>x.id===state.activeItemId);
+  if(!i) return "";
+  const lvl = stockLevel(i);
+  return `
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+    <div>
+      <div class="item-code" style="font-size:12.5px;">${i.codigo}</div>
+      <div style="font-size:17px; font-weight:700; margin-top:2px;">${i.nombre}</div>
+      <div class="item-meta" style="margin-top:6px;">
+        <span class="type-tag ${i.tipo}">${i.tipo}</span>
+        <span class="dot-sep"></span><span>${catNombre(i.categoria_id)}</span>
+      </div>
+    </div>
+    <div class="stock-badge ${lvl}" style="font-size:16px;padding:6px 12px;">${i.stock_actual} ${i.unidad}</div>
+  </div>
+
+  <div class="stock-bar-track" style="height:6px;margin-bottom:18px;">
+    <div class="stock-bar-fill" style="width:${stockPct(i)}%; background:${lvl==='ok'?'var(--ok)':lvl==='warn'?'var(--warn)':'var(--danger)'};"></div>
+  </div>
+
+  <div class="field-row" style="margin-bottom:4px;">
+    <div class="field"><label>Ubicación</label><div style="font-size:13.5px;">${i.ubicacion || '—'}</div></div>
+    <div class="field"><label>Stock mínimo</label><div style="font-size:13.5px;font-family:var(--mono);">${i.stock_minimo} ${i.unidad}</div></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Proveedor</label><div style="font-size:13.5px;">${i.proveedor || '—'}</div></div>
+    <div class="field"><label>Equipo asociado</label><div style="font-size:13.5px;">${i.equipo_asociado || '—'}</div></div>
+  </div>
+
+  <div class="section-label">Registrar conteo / movimiento</div>
+  <div class="field-row" style="margin-bottom:8px;">
+    <div class="field"><label>Tipo</label>
+      <select id="mv-tipo">
+        <option value="entrada">Entrada</option>
+        <option value="salida">Salida</option>
+        <option value="ajuste_conteo">Ajuste por conteo físico</option>
+      </select>
+    </div>
+    <div class="field"><label>Cantidad</label><input id="mv-cantidad" type="number" min="0" value="1"></div>
+  </div>
+  <div class="field"><label>Motivo</label><input id="mv-motivo" placeholder="Ej: OT-1234, Conteo mensual, Compra..."></div>
+  <button class="btn btn-primary" id="mv-guardar">Registrar movimiento</button>
+
+  <div class="section-label">Últimos movimientos de este ítem</div>
+  ${movimientos.filter(m=>m.item_id===i.id).length===0 ? `<div style="font-size:12.5px;color:var(--text-muted);">Sin movimientos registrados.</div>` :
+  movimientos.filter(m=>m.item_id===i.id).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).slice(0,5).map(m=>`
+    <div class="movement-row">
+      <div style="color:var(--text-muted);">${m.motivo||''} · ${fmtFecha(m.fecha)}</div>
+      <div class="mv-tag ${m.tipo}">${m.tipo.replace('_',' ')} ${m.tipo==='salida'?'-':'+'}${m.cantidad}</div>
+    </div>
+  `).join('')}
+  `;
+}
+
+// ============================================================
+// BINDINGS
+// ============================================================
+function bindGlobal(){
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.onclick = ()=>{ state.tab = btn.dataset.tab; state.sheet=null; render(); };
+  });
+
+  const fab = document.getElementById('fab-add');
+  if(fab) fab.onclick = ()=>{ state.sheet = "nuevo-item"; render(); };
+
+  if(state.tab === "stock") bindConsultaStock();
+
+  const searchInput = document.getElementById('search-input');
+  if(searchInput){
+    searchInput.oninput = (e)=>{ state.search = e.target.value; renderContentOnly(); };
+    searchInput.focus();
+    searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
+  }
+
+  document.querySelectorAll('#chip-tipo .chip').forEach(c=>{
+    c.onclick = ()=>{ state.filterTipo = c.dataset.tipo; render(); };
+  });
+  document.querySelectorAll('#chip-cat .chip').forEach(c=>{
+    c.onclick = ()=>{ state.filterCategoria = c.dataset.cat; render(); };
+  });
+
+  document.querySelectorAll('.item-card').forEach(card=>{
+    card.onclick = ()=>{ state.activeItemId = card.dataset.item; state.sheet = "detalle-item"; render(); };
+  });
+  if(state.tab === "stock") bindConsultaStock();
+  const searchActivo = document.getElementById('search-activo');
+  if(searchActivo){
+    searchActivo.oninput = (e)=>{ state.searchActivo = e.target.value; renderContentOnly(); };
+    searchActivo.focus();
+    searchActivo.selectionStart = searchActivo.selectionEnd = searchActivo.value.length;
+  }
+  document.querySelectorAll('#chip-activo .chip').forEach(c=>{
+    c.onclick = ()=>{ state.filtroActivo = c.dataset.activo; render(); };
+  });
+  document.querySelectorAll('[data-activo]').forEach(card=>{
+    if(card.classList.contains('item-card')) card.onclick = ()=>{ state.activeActivoId = card.dataset.activo; state.sheet = "detalle-activo"; render(); };
+  });
+
+  const overlay = document.getElementById('sheet-overlay');
+  if(overlay) overlay.onclick = ()=>{ state.sheet=null; render(); };
+  const closeBtn = document.getElementById('sheet-close');
+  if(closeBtn) closeBtn.onclick = ()=>{ state.sheet=null; render(); };
+
+  const niGuardar = document.getElementById('ni-guardar');
+  if(niGuardar) niGuardar.onclick = onGuardarNuevoItem;
+
+  const mvGuardar = document.getElementById('mv-guardar');
+  if(mvGuardar) mvGuardar.onclick = onRegistrarMovimiento;
+
+  const guardarUbicacionActivo = document.getElementById('guardar-ubicacion-activo');
+  if(guardarUbicacionActivo) guardarUbicacionActivo.onclick = onGuardarUbicacionActivo;
+  const moverActivoBtn = document.getElementById('mover-activo-btn');
+  if(moverActivoBtn) moverActivoBtn.onclick = onMoverActivo;
+
+  const addCatBtn = document.getElementById('add-cat-btn');
+  if(addCatBtn) addCatBtn.onclick = onAgregarCategoria;
+
+  const cfgConnect = document.getElementById('cfg-connect-btn');
+  if(cfgConnect) cfgConnect.onclick = onConectarSupabase;
+
+  const exportBtn = document.getElementById('export-btn');
+  if(exportBtn) exportBtn.onclick = onExportarCSV;
+
+  const logoutBtn = document.getElementById('logout-btn');
+  if(logoutBtn) logoutBtn.onclick = ()=>{
+    localStorageSet("bodega_user","");
+    currentUser=""; state.screen="login"; render();
+  };
+}
+
+function renderContentOnly(){
+  // Evita perder el foco del input de búsqueda al re-renderizar todo
+  const content = document.getElementById('content');
+  content.innerHTML = renderTab();
+  document.querySelectorAll('.chip').forEach(c=>{
+    if(c.closest('#chip-tipo')) c.onclick = ()=>{ state.filterTipo = c.dataset.tipo; render(); };
+    if(c.closest('#chip-cat')) c.onclick = ()=>{ state.filterCategoria = c.dataset.cat; render(); };
+  });
+  document.querySelectorAll('.item-card[data-item]').forEach(card=>{
+    card.onclick = ()=>{ state.activeItemId = card.dataset.item; state.sheet = "detalle-item"; render(); };
+  });
+  const searchActivo = document.getElementById('search-activo');
+  if(searchActivo){
+    searchActivo.oninput = (e)=>{ state.searchActivo=e.target.value; renderContentOnly(); };
+  }
+  document.querySelectorAll('#chip-activo .chip').forEach(c=>{
+    c.onclick=()=>{ state.filtroActivo=c.dataset.activo; render(); };
+  });
+  document.querySelectorAll('.item-card[data-activo]').forEach(card=>{
+    card.onclick=()=>{ state.activeActivoId=card.dataset.activo; state.sheet='detalle-activo'; render(); };
+  });
+}
+
+function onGuardarNuevoItem(){
+  const codigo = document.getElementById('ni-codigo').value.trim();
+  const nombre = document.getElementById('ni-nombre').value.trim();
+  if(!codigo || !nombre){ showToast("Código y nombre son obligatorios"); return; }
+  const nuevo = {
+    id: 'i' + Date.now(),
+    codigo, nombre,
+    tipo: document.getElementById('ni-tipo').value,
+    categoria_id: document.getElementById('ni-categoria').value || null,
+    unidad: document.getElementById('ni-unidad').value || 'un',
+    stock_actual: Number(document.getElementById('ni-stock').value)||0,
+    stock_minimo: Number(document.getElementById('ni-minimo').value)||0,
+    ubicacion: document.getElementById('ni-ubicacion').value,
+    proveedor: document.getElementById('ni-proveedor').value,
+    equipo_asociado: document.getElementById('ni-equipo').value,
+  };
+  items.unshift(nuevo);
+  state.sheet = null;
+  render();
+
+  if(supabaseClient){
+    // Solo se envían las columnas que existen realmente en la tabla "items"
+    const payload = {
+      codigo: nuevo.codigo,
+      nombre: nuevo.nombre,
+      tipo: nuevo.tipo,
+      categoria_id: nuevo.categoria_id || null,
+      unidad_medida: nuevo.unidad,
+      stock_actual: nuevo.stock_actual,
+      stock_minimo: nuevo.stock_minimo,
+      ubicacion: nuevo.ubicacion || null,
+      proveedor: nuevo.proveedor || null,
+      equipo_asociado: nuevo.equipo_asociado || null,
+    };
+    supabaseClient.from('items').insert([payload]).select().then(({data, error})=>{
+      if(error){
+        showToast("Error al guardar en Supabase: " + error.message);
+      } else {
+        showToast("Ítem agregado y guardado en Supabase");
+        if(data && data[0]){ nuevo.id = data[0].id; } // usar el id real de la base de datos
+      }
+    });
+  } else {
+    showToast("Ítem agregado (modo demo, no se guarda)");
+  }
+}
+
+function onRegistrarMovimiento(){
+  const i = items.find(x=>x.id===state.activeItemId);
+  if(!i) return;
+  const tipo = document.getElementById('mv-tipo').value;
+  const cantidad = Number(document.getElementById('mv-cantidad').value)||0;
+  const motivo = document.getElementById('mv-motivo').value;
+  if(cantidad<=0){ showToast("Ingresa una cantidad válida"); return; }
+
+  if(tipo==='entrada') i.stock_actual += cantidad;
+  else if(tipo==='salida') i.stock_actual = Math.max(0, i.stock_actual - cantidad);
+  else if(tipo==='ajuste_conteo') i.stock_actual = cantidad; // el conteo físico reemplaza el stock
+
+  const mov = {
+    id:'m'+Date.now(), item_id:i.id, tipo, cantidad,
+    stock_resultante:i.stock_actual, motivo, responsable:currentUser,
+    fecha:new Date().toISOString()
+  };
+  movimientos.unshift(mov);
+  render();
+
+  if(supabaseClient){
+    // "fecha" no es una columna real (la tabla usa created_at automático) — se excluye del envío
+    const payload = {
+      item_id: mov.item_id, tipo: mov.tipo, cantidad: mov.cantidad,
+      stock_resultante: mov.stock_resultante, motivo: mov.motivo, responsable: mov.responsable,
+    };
+    supabaseClient.from('movimientos').insert([payload]).then(({error})=>{
+      if(error) showToast("Error al guardar movimiento: " + error.message);
+      else showToast("Movimiento registrado y guardado en Supabase");
+    });
+    // También actualizar el stock_actual del ítem en la tabla items
+    supabaseClient.from('items').update({stock_actual: i.stock_actual}).eq('id', i.id).then(({error})=>{
+      if(error) showToast("Error al actualizar stock: " + error.message);
+    });
+  } else {
+    showToast("Movimiento registrado (modo demo, no se guarda)");
+  }
+}
+
+function onAgregarCategoria(){
+  const nombre = document.getElementById('new-cat-name').value.trim();
+  const padre = document.getElementById('new-cat-padre').value || null;
+  if(!nombre){ showToast("Escribe un nombre de categoría"); return; }
+  categorias.push({ id:'c'+Date.now(), nombre, padre });
+  showToast("Categoría agregada");
+  render();
+}
+
+function onExportarCSV(){
+  const headers = ['codigo','nombre','tipo','categoria','ubicacion','unidad','stock_actual','stock_minimo','proveedor'];
+  const rows = items.map(i=>[i.codigo,i.nombre,i.tipo,catNombre(i.categoria_id),i.ubicacion||'',i.unidad,i.stock_actual,i.stock_minimo,i.proveedor||'']);
+  let csv = headers.join(',') + '\n' + rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'catalogo_bodega.csv';
+  a.click();
+  showToast("CSV exportado");
+}
+
+function onConectarSupabase(){
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if(!url || !key){ showToast("Completa URL y key"); return; }
+  // Guardar configuración para que este dispositivo reconecte automáticamente
+  // cada vez que se abra la aplicación.
+  supaConfig = { url, key };
+  localStorageSet("bodega_supabase_url", url);
+  localStorageSet("bodega_supabase_key", key);
+
+  const script = document.createElement('script');
+  script.src = SUPABASE_JS_CDN;
+  script.onload = async ()=>{
+    supabaseClient = window.supabase.createClient(url, key);
+    showToast("Conectando a Supabase...");
+    try{
+      const { data: itemsData } = await supabaseClient.from('items').select('*');
+      const { data: catsData } = await supabaseClient.from('categorias').select('*');
+      const { data: movsData } = await supabaseClient.from('movimientos').select('*');
+      const { data: activosData } = await supabaseClient.from('activos').select('*');
+      const { data: ubicacionesData } = await supabaseClient.from('ubicaciones').select('*');
+      if(itemsData && itemsData.length){
+        items = itemsData.map(i=>({...i, categoria_id:i.categoria_id, ubicacion:i.ubicacion_id||i.ubicacion}));
+      }
+      if(catsData && catsData.length){
+        categorias = catsData.map(c=>({id:c.id, nombre:c.nombre, padre:c.categoria_padre_id}));
+      }
+      if(movsData && movsData.length){
+        movimientos = movsData.map(m=>({...m, fecha:m.created_at}));
+      }
+      if(activosData){ activos = activosData; }
+      if(ubicacionesData){ ubicaciones = ubicacionesData; }
+      showToast("Conectado — datos sincronizados");
+    }catch(e){
+      showToast("Conectado, pero sin datos aún (¿corriste schema.sql?)");
+    }
+    render();
+  };
+  script.onerror = ()=>{ showToast("No se pudo cargar el cliente de Supabase"); };
+  document.head.appendChild(script);
+}
+
+// ============================================================
+// INICIO
+// ============================================================
+// Si este dispositivo ya tiene una configuración de Supabase guardada,
+// intentamos conectarnos automáticamente al abrir la aplicación.
+async function autoConnectSupabase(){
+  if(!supaConfig.url || !supaConfig.key) return;
+
+  const script = document.createElement('script');
+  script.src = SUPABASE_JS_CDN;
+
+  script.onload = async ()=>{
+    try{
+      supabaseClient = window.supabase.createClient(supaConfig.url, supaConfig.key);
+      const loginNote = document.getElementById("login-note");
+      if(loginNote) loginNote.textContent = "Conectado a Supabase — listo para ingresar.";
+
+      const [
+        { data: itemsData, error: itemsError },
+        { data: catsData, error: catsError },
+        { data: movsData, error: movsError },
+        { data: activosData, error: activosError },
+        { data: ubicacionesData, error: ubicacionesError }
+      ] = await Promise.all([
+        supabaseClient.from('items').select('*'),
+        supabaseClient.from('categorias').select('*'),
+        supabaseClient.from('movimientos').select('*'),
+        supabaseClient.from('activos').select('*'),
+        supabaseClient.from('ubicaciones').select('*')
+      ]);
+
+      if(itemsError || catsError || movsError || activosError || ubicacionesError){
+        throw new Error(
+          (itemsError || catsError || movsError || activosError).message || "Error al cargar datos"
+        );
+      }
+
+      if(itemsData){
+        items = itemsData.map(i=>({
+          ...i,
+          categoria_id:i.categoria_id,
+          ubicacion:i.ubicacion_id||i.ubicacion,
+          unidad:i.unidad_medida||i.unidad||"un"
+        }));
+      }
+
+      if(catsData){
+        categorias = catsData.map(c=>({
+          id:c.id,
+          nombre:c.nombre,
+          padre:c.categoria_padre_id
+        }));
+      }
+
+      if(movsData){
+        movimientos = movsData.map(m=>({
+          ...m,
+          fecha:m.created_at || m.fecha
+        }));
+      }
+      if(activosData){
+        activos = activosData;
+      }
+      if(ubicacionesData){
+        ubicaciones = ubicacionesData;
+      }
+
+      render();
+      showToast("Conectado — datos sincronizados");
+    }catch(e){
+      supabaseClient = null;
+      const loginNote = document.getElementById("login-note");
+      if(loginNote) loginNote.textContent = "No se pudo conectar a Supabase: " + (e.message || "revisa la configuración");
+      render();
+      showToast("Sin conexión a Supabase: " + (e.message || "revisa la configuración"));
+    }
+  };
+
+  script.onerror = ()=>{
+    supabaseClient = null;
+    const loginNote = document.getElementById("login-note");
+    if(loginNote) loginNote.textContent = "No se pudo cargar el cliente de Supabase.";
+    render();
+    showToast("No se pudo cargar el cliente de Supabase");
+  };
+
+  document.head.appendChild(script);
+}
+
+render();
+autoConnectSupabase();
+</script>
+</body>
+</html>
