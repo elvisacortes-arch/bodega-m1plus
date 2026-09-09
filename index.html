@@ -626,19 +626,57 @@ function activosPorRangoPotencia(rango){
 function renderConsultaStock(){
   const patios = ubicaciones.filter(u=>u.nivel==='patio' || /^PATIO-/.test(u.codigo));
   const patio = ubicaciones.find(u=>String(u.id)===String(state.stockPatio));
-  const sectores = patio ? ubicacionesHijas(patio.id) : [];
+
+let sectores = patio ? ubicacionesHijas(patio.id) : [];
+
+// Patio 2: solo mostrar Sector CPR
+if(patio && patio.codigo === 'PATIO-02'){
+  sectores = sectores.filter(s => s.codigo === 'P2-CPR');
+}
   const sector = ubicaciones.find(u=>String(u.id)===String(state.stockSector));
   const zonas = sector ? ubicacionesHijas(sector.id) : [];
   const zona = ubicaciones.find(u=>String(u.id)===String(state.stockZona));
   const posiciones = zona ? ubicacionesHijas(zona.id) : [];
+let resultados = [];
 
-  let resultados = [];
-  if(state.stockPatio){
-    resultados = activosEnUbicacion(state.stockPatio);
-    if(state.stockSector) resultados = resultados.filter(a=>activosEnUbicacion(state.stockSector).some(x=>x.id===a.id));
-    if(state.stockZona) resultados = resultados.filter(a=>activosEnUbicacion(state.stockZona).some(x=>x.id===a.id));
-    if(state.stockPosicion) resultados = resultados.filter(a=>String(a.ubicacion_id)===String(state.stockPosicion));
+if(state.stockPatio){
+
+  resultados = activosEnUbicacion(state.stockPatio);
+
+  // PATIO 2: solo activos mecánicos del sector CPR
+  if(patio && patio.codigo === 'PATIO-02'){
+
+    const sectorCPR = ubicaciones.find(u => u.codigo === 'P2-CPR');
+
+    if(sectorCPR){
+      resultados = activosEnUbicacion(sectorCPR.id);
+    }
+
+    // Seguridad adicional: nunca mostrar motores
+    resultados = resultados.filter(a => a.tipo_activo !== 'motor');
   }
+
+  if(state.stockSector){
+    resultados = resultados.filter(a =>
+      activosEnUbicacion(state.stockSector)
+        .some(x => x.id === a.id)
+    );
+  }
+
+  if(state.stockZona){
+    resultados = resultados.filter(a =>
+      activosEnUbicacion(state.stockZona)
+        .some(x => x.id === a.id)
+    );
+  }
+
+  if(state.stockPosicion){
+    resultados = resultados.filter(a =>
+      String(a.ubicacion_id) === String(state.stockPosicion)
+    );
+  }
+}
+ 
 
   const selectedPath = [patio,sector,zona,ubicaciones.find(u=>String(u.id)===String(state.stockPosicion))].filter(Boolean)
     .map(u=>u.descripcion || u.codigo).join(' / ');
@@ -678,7 +716,7 @@ function renderConsultaStock(){
       </select>
     </div>` : ''}
 
-    ${state.stockPosicion ? (() => {
+    ${state.stockPosicion && patio && patio.codigo === 'PATIO-01' ? (() => {
       const pos = ubicaciones.find(u=>String(u.id)===String(state.stockPosicion));
       const rango = rangoPotenciaDePosicion(pos);
       const activosPotencia = activosPorRangoPotencia(rango);
