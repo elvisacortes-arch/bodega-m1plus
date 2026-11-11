@@ -583,44 +583,43 @@ function ubicacionesHijas(parentId){
 function ubicacionPorCodigo(codigo){
   return ubicaciones.find(u=>u.codigo===codigo) || null;
 }
-function activosEnUbicacion(id){
-  if(!id) return [];
-  const ids = new Set([id]);
-  let changed = true;
+function ubicacionIdItem(item){
+  const raw=item.ubicacion_id || item.ubicacion;
+  if(!raw) return null;
+  const u=ubicaciones.find(x=>
+    String(x.id)===String(raw) ||
+    x.codigo===String(raw) ||
+    x.descripcion===String(raw)
+  );
+  return u ? u.id : (item.ubicacion_id || null);
+}
+function ubicacionesDescendientes(id){
+  const ids=new Set([String(id)]);
+  let changed=true;
   while(changed){
-    changed = false;
+    changed=false;
     ubicaciones.forEach(u=>{
-      if(u.parent_id && ids.has(u.parent_id) && !ids.has(u.id)){
-        ids.add(u.id); changed = true;
+      if(u.parent_id && ids.has(String(u.parent_id)) && !ids.has(String(u.id))){
+        ids.add(String(u.id));
+        changed=true;
       }
     });
   }
-  return activos.filter(a=>a.ubicacion_id && ids.has(a.ubicacion_id));
+  return ids;
 }
-
-function potenciaKW(a){
-  if(a == null) return null;
-  const raw = typeof a === 'object' ? (a.potencia ?? '') : a;
-  const s = String(raw).replace(',', '.');
-  const m = s.match(/(\d+(?:\.\d+)?)/);
-  return m ? Number(m[1]) : null;
+function activosEnUbicacion(id){
+  if(!id) return [];
+  const ids=ubicacionesDescendientes(id);
+  return activos.filter(a=>a.ubicacion_id && ids.has(String(a.ubicacion_id)));
 }
-
-function rangoPotenciaDePosicion(u){
-  if(!u) return null;
-  const texto = `${u.codigo || ''} ${u.descripcion || ''}`;
-  const m = texto.match(/(\d+(?:[.,]\d+)?)\s*(?:a|-|–|—)\s*(\d+(?:[.,]\d+)?)\s*kW/i);
-  if(!m) return null;
-  return { min:Number(m[1].replace(',','.')), max:Number(m[2].replace(',','.')) };
-}
-
-function activosPorRangoPotencia(rango){
-  if(!rango) return [];
-  return activos.filter(a=>{
-    if(a.tipo_activo !== 'motor') return false;
-    const kw = potenciaKW(a);
-    return kw !== null && kw >= rango.min && kw <= rango.max;
-  });
+function itemsEnUbicacion(id){
+  if(!id) return [];
+  const ids=ubicacionesDescendientes(id);
+  return items.filter(i=>
+    i.tipo==='repuesto' &&
+    ubicacionIdItem(i) &&
+    ids.has(String(ubicacionIdItem(i)))
+  );
 }
 
 function renderConsultaStock(){
@@ -629,11 +628,15 @@ function renderConsultaStock(){
 
 let sectores = patio ? ubicacionesHijas(patio.id) : [];
 
-// Patio 2: mostrar el sector CPR y cualquier sector que contenga bombas.
+// Patio 1: mostrar sectores que contienen repuestos.
+if(patio && patio.codigo === 'PATIO-01'){
+  sectores = sectores.filter(s => itemsEnUbicacion(s.id).length > 0);
+}
+// Patio 2: mostrar el sector CPR y cualquier sector que contenga activos CPR.
 if(patio && patio.codigo === 'PATIO-02'){
   sectores = sectores.filter(s =>
     s.codigo === 'P2-CPR' ||
-    activosEnUbicacion(s.id).some(a => a.tipo_activo === 'bomba')
+    activosEnUbicacion(s.id).some(a => a.tipo_activo === 'cpr')
   );
 }
 
@@ -642,15 +645,17 @@ const sector = ubicaciones.find(u=>String(u.id)===String(state.stockSector));
 const zonas = sector ? ubicacionesHijas(sector.id) : [];
 const zona = ubicaciones.find(u=>String(u.id)===String(state.stockZona));
 const posiciones = zona ? ubicacionesHijas(zona.id) : [];
+const esPatioRepuestos = patio && patio.codigo === 'PATIO-01';
+const activosEnSeleccion = esPatioRepuestos ? itemsEnUbicacion : activosEnUbicacion;
 let resultados = [];
 
 if(state.stockPatio){
-  resultados = activosEnUbicacion(state.stockPatio);
+  resultados = activosEnSeleccion(state.stockPatio);
 
   // Reglas de consulta por patio: no modificar ni reasignar datos de Supabase.
   if(patio && patio.codigo === 'PATIO-02'){
     resultados = resultados.filter(a =>
-      a.tipo_activo === 'cpr' || a.tipo_activo === 'bomba'
+      a.tipo_activo === 'cpr'
     );
   } else if(patio && patio.codigo === 'PATIO-03'){
     resultados = resultados.filter(a => a.tipo_activo === 'motor');
@@ -658,19 +663,19 @@ if(state.stockPatio){
 
   if(state.stockSector){
     resultados = resultados.filter(a =>
-      activosEnUbicacion(state.stockSector).some(x => x.id === a.id)
+      activosEnSeleccion(state.stockSector).some(x => String(x.id) === String(a.id))
     );
   }
 
   if(state.stockZona){
     resultados = resultados.filter(a =>
-      activosEnUbicacion(state.stockZona).some(x => x.id === a.id)
+      activosEnSeleccion(state.stockZona).some(x => String(x.id) === String(a.id))
     );
   }
 
   if(state.stockPosicion){
     resultados = resultados.filter(a =>
-      String(a.ubicacion_id) === String(state.stockPosicion)
+      String(esPatioRepuestos ? ubicacionIdItem(a) : a.ubicacion_id) === String(state.stockPosicion)
     );
   }
 }
@@ -682,7 +687,7 @@ if(state.stockPatio){
   return `
     <div style="margin-bottom:14px;">
       <div style="font-size:19px;font-weight:700;">Consulta de stock</div>
-      <div class="item-meta" style="margin-top:5px;">Encuentra rápidamente qué activos tienes y dónde están.</div>
+      <div class="item-meta" style="margin-top:5px;">Encuentra repuestos y activos según el patio y su ubicación.</div>
     </div>
 
     <div class="section-label">Ubicación</div>
@@ -714,50 +719,13 @@ if(state.stockPatio){
       </select>
     </div>` : ''}
 
-    ${state.stockPosicion && patio && patio.codigo === 'PATIO-01' ? (() => {
-      const pos = ubicaciones.find(u=>String(u.id)===String(state.stockPosicion));
-      const rango = rangoPotenciaDePosicion(pos);
-      const activosPotencia = activosPorRangoPotencia(rango);
-      if(!rango) return `<div class="stat-card" style="margin:12px 0 14px;">
-        <div class="label">5. ACTIVOS</div>
-        <div class="item-meta" style="margin-top:7px;">No se pudo determinar el rango de potencia de esta posición.</div>
-      </div>`;
-      return `<div style="margin:12px 0 14px;">
-        <div class="section-label">5. Activos por potencia</div>
-        <div class="stat-card" style="margin-bottom:10px;">
-          <div class="num">${activosPotencia.length}</div>
-          <div class="label">Motores entre ${rango.min} y ${rango.max} kW</div>
-        </div>
-        ${activosPotencia.length===0
-          ? `<div class="empty-state" style="padding:24px 10px;"><div class="icon">⚙️</div><div class="title">Sin motores en este rango</div><div class="sub">Cuando carguemos los motores del inventario, aparecerán aquí sus códigos.</div></div>`
-          : activosPotencia.map(a=>`
-            <div class="item-card" data-activo="${a.id}" style="margin-bottom:8px;">
-              <div class="item-thumb">⚙️</div>
-              <div class="item-main">
-                <div class="item-top">
-                  <div>
-                    <div class="item-code">${a.codigo || 'SIN CÓDIGO'}</div>
-                    <div class="item-name">${a.nombre || 'Motor'}</div>
-                  </div>
-                </div>
-                <div class="item-meta">
-                  <span>${a.potencia || '—'}</span>
-                  ${a.marca ? `<span class="dot-sep"></span><span>${a.marca}</span>` : ''}
-                  ${a.modelo ? `<span class="dot-sep"></span><span>${a.modelo}</span>` : ''}
-                </div>
-              </div>
-            </div>
-          `).join('')}
-      </div>`;
-    })() : ''}
-
     ${state.stockPatio ? `
       <div class="stat-card" style="margin:12px 0 14px;">
         <div class="num">${resultados.length}</div>
-        <div class="label">Activos encontrados</div>
+        <div class="label">${esPatioRepuestos ? 'Repuestos encontrados' : 'Activos encontrados'}</div>
         ${selectedPath ? `<div class="item-meta" style="margin-top:8px;">📍 ${selectedPath}</div>` : ''}
       </div>
-      ${resultados.length===0 ? `<div class="empty-state"><div class="icon">🔎</div><div class="title">Sin activos en esta selección</div><div class="sub">Prueba con un nivel superior o cambia el filtro.</div></div>` : resultados.map(a=>renderActivoCard(a)).join('')}
+      ${resultados.length===0 ? `<div class="empty-state"><div class="icon">🔎</div><div class="title">${esPatioRepuestos ? 'Sin repuestos en esta selección' : 'Sin activos en esta selección'}</div><div class="sub">Prueba con un nivel superior o cambia el filtro.</div></div>` : resultados.map(a=>esPatioRepuestos ? renderItemCard(a) : renderActivoCard(a)).join('')}
     ` : `
       <div class="empty-state"><div class="icon">📍</div><div class="title">Selecciona un patio</div><div class="sub">Luego iremos mostrando solo los sectores, zonas y posiciones que correspondan.</div></div>
     `}
