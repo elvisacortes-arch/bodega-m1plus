@@ -622,6 +622,15 @@ function itemsEnUbicacion(id){
   );
 }
 
+function etiquetaPatio(u){
+  const etiquetas={
+    "PATIO-01":"PATIO-01 — Patio 1 - Repuestos",
+    "PATIO-02":"PATIO-02 — Patio 2 - CPR",
+    "PATIO-03":"PATIO-03 — Patio 3 - Motores"
+  };
+  return etiquetas[u.codigo] || `${u.codigo} — ${u.descripcion}`;
+}
+
 function renderConsultaStock(){
   const patios = ubicaciones.filter(u=>u.nivel==='patio' || /^PATIO-/.test(u.codigo));
   const patio = ubicaciones.find(u=>String(u.id)===String(state.stockPatio));
@@ -693,7 +702,7 @@ if(state.stockPatio){
     <div class="field"><label>1. Patio</label>
       <select id="stock-patio">
         <option value="">Selecciona un patio</option>
-        ${patios.map(u=>`<option value="${u.id}" ${state.stockPatio===u.id?'selected':''}>${u.codigo} — ${u.descripcion}</option>`).join('')}
+        ${patios.map(u=>`<option value="${u.id}" ${state.stockPatio===u.id?'selected':''}>${etiquetaPatio(u)}</option>`).join('')}
       </select>
     </div>
 
