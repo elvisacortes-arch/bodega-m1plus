@@ -628,10 +628,6 @@ function renderConsultaStock(){
 
 let sectores = patio ? ubicacionesHijas(patio.id) : [];
 
-// Patio 1: mostrar sectores que contienen repuestos.
-if(patio && patio.codigo === 'PATIO-01'){
-  sectores = sectores.filter(s => itemsEnUbicacion(s.id).length > 0);
-}
 // Patio 2: mostrar el sector CPR y cualquier sector que contenga activos CPR.
 if(patio && patio.codigo === 'PATIO-02'){
   sectores = sectores.filter(s =>
@@ -646,11 +642,12 @@ const zonas = sector ? ubicacionesHijas(sector.id) : [];
 const zona = ubicaciones.find(u=>String(u.id)===String(state.stockZona));
 const posiciones = zona ? ubicacionesHijas(zona.id) : [];
 const esPatioRepuestos = patio && patio.codigo === 'PATIO-01';
-const activosEnSeleccion = esPatioRepuestos ? itemsEnUbicacion : activosEnUbicacion;
 let resultados = [];
 
 if(state.stockPatio){
-  resultados = activosEnSeleccion(state.stockPatio);
+  resultados = esPatioRepuestos
+    ? items.filter(i => i.tipo === 'repuesto')
+    : activosEnUbicacion(state.stockPatio);
 
   // Reglas de consulta por patio: no modificar ni reasignar datos de Supabase.
   if(patio && patio.codigo === 'PATIO-02'){
@@ -663,13 +660,15 @@ if(state.stockPatio){
 
   if(state.stockSector){
     resultados = resultados.filter(a =>
-      activosEnSeleccion(state.stockSector).some(x => String(x.id) === String(a.id))
+      (esPatioRepuestos ? itemsEnUbicacion(state.stockSector) : activosEnUbicacion(state.stockSector))
+        .some(x => String(x.id) === String(a.id))
     );
   }
 
   if(state.stockZona){
     resultados = resultados.filter(a =>
-      activosEnSeleccion(state.stockZona).some(x => String(x.id) === String(a.id))
+      (esPatioRepuestos ? itemsEnUbicacion(state.stockZona) : activosEnUbicacion(state.stockZona))
+        .some(x => String(x.id) === String(a.id))
     );
   }
 
@@ -687,7 +686,7 @@ if(state.stockPatio){
   return `
     <div style="margin-bottom:14px;">
       <div style="font-size:19px;font-weight:700;">Consulta de stock</div>
-      <div class="item-meta" style="margin-top:5px;">Encuentra repuestos y activos según el patio y su ubicación.</div>
+      <div class="item-meta" style="margin-top:5px;">Patio 1: repuestos · Patio 2: CPR · Patio 3: motores.</div>
     </div>
 
     <div class="section-label">Ubicación</div>
