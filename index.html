@@ -928,7 +928,8 @@ function reconstruirIndiceActivos(){
     const ubicacion = a.ubicacion_id ? ubicacionNombre(a.ubicacion_id) : '';
     const ruta = a.ubicacion_id ? ubicacionRuta(a.ubicacion_id) : '';
     const texto = normalizarBusquedaActivo([
-      a.codigo, a.nombre, a.marca, a.modelo, a.ubicacion, ubicacion, ruta
+      a.codigo, a.nombre, a.marca, a.modelo, a.ubicacion, ubicacion, ruta,
+      JSON.stringify(datosTecnicosDeActivo(a))
     ].filter(Boolean).join(' '));
 
     activoIndexadoPorId.set(id, a);
@@ -1108,7 +1109,7 @@ function renderActivoCard(a){
         <span class="dot-sep"></span>
         <span>${a.marca||'Sin marca'}${a.modelo ? ' · '+a.modelo : ''}</span>
       </div>
-      <div class="item-meta" style="margin-top:6px;">${technical||'Sin especificaciones técnicas'} · 📍 ${loc}</div>
+      <div class="item-meta" style="margin-top:6px;">${[technical,resumenDatosTecnicos(a)].filter(Boolean).join(' · ')||'Sin especificaciones técnicas'} · 📍 ${loc}</div>
       ${ruta ? `<div class="item-meta" style="margin-top:4px;">🧭 ${ruta}</div>` : ''}
     </div>
   </div>`;
@@ -1153,6 +1154,7 @@ function sheetDetalleActivo(){
       <div class="field"><label>Tensión</label><div>${a.tension!=null ? a.tension+' V':'—'}</div></div>
     </div>
     <div class="field"><label>RPM</label><div>${a.rpm!=null ? a.rpm:'—'}</div></div>
+    ${resumenDatosTecnicos(a) ? `<div class="field"><label>Parámetros de ${a.tipo_activo||'activo'}</label><div>${resumenDatosTecnicos(a)}</div></div>` : ''}
 
     <div class="section-label">Ubicación actual</div>
     <div class="field">
@@ -1404,6 +1406,123 @@ function renderCategorias(){
   `;
 }
 
+function campoTecnicoIngreso(clave, etiqueta, placeholder, tipo='text'){
+  const numeric=tipo==='number';
+  return `<div class="field"><label>${etiqueta}</label><input data-tecnico="${clave}" type="${tipo}" ${numeric?'step="any"':''} placeholder="${placeholder}"></div>`;
+}
+function renderCamposTecnicosIngreso(tipo){
+  const configuracion={
+    motor:{
+      titulo:'Datos técnicos del motor',
+      campos:[
+        ['potencia','Potencia nominal','Ej: 75 HP o 55 kW','text'],
+        ['corriente','Corriente nominal (A)','Ej: 125.4','number'],
+        ['frame','Frame','Ej: 5009L','text'],
+        ['tension','Tensión nominal (V)','Ej: 400','number'],
+        ['rpm','Velocidad nominal (RPM)','Ej: 1485','number'],
+        ['frecuencia_hz','Frecuencia nominal (Hz)','50 / 60','text'],
+        ['fases','Fases','1 / 3','text'],
+        ['numero_serie','N.º de serie','Según placa del motor','text'],
+        ['clase_aislamiento','Clase de aislamiento','Ej: F','text'],
+        ['grado_proteccion','Grado de protección','Ej: IP55','text'],
+        ['factor_servicio','Factor de servicio','Ej: 1.15','number']
+      ],
+      estados:['NUEVO','REPARADO','REPARABLE','POR CONFIRMAR']
+    },
+    bomba:{
+      titulo:'Datos hidráulicos de la bomba',
+      campos:[
+        ['potencia','Potencia nominal','Ej: 75 HP o 55 kW','text'],
+        ['caudal','Caudal','Ej: 120 m³/h o 33 L/s','text'],
+        ['altura_manometrica','Altura manométrica','Ej: 80 m','text'],
+        ['presion_operacion','Presión de operación','Ej: 8 bar','text'],
+        ['curva','Referencia de curva','N.º de curva o documento','text'],
+        ['npsh','NPSH requerido','Ej: 3.2 m','text'],
+        ['rpm','Velocidad nominal (RPM)','Ej: 2950','number'],
+        ['diametro_succion','Diámetro de succión','Ej: 4 pulgadas','text'],
+        ['diametro_descarga','Diámetro de descarga','Ej: 3 pulgadas','text'],
+        ['fluido','Fluido / servicio','Ej: agua, pulpa','text'],
+        ['numero_serie','N.º de serie','Según placa de la bomba','text']
+      ],
+      estados:['OPERATIVA','EN MANTENCIÓN','FUERA DE SERVICIO','POR CONFIRMAR']
+    },
+    vdf:{
+      titulo:'Datos eléctricos y de control del VDF',
+      campos:[
+        ['potencia','Potencia nominal','Ej: 75 kW o 100 HP','text'],
+        ['tension_entrada','Tensión de entrada (V)','Ej: 380','number'],
+        ['tension_salida','Tensión de salida (V)','Ej: 380','number'],
+        ['corriente_entrada','Corriente de entrada (A)','Ej: 120','number'],
+        ['corriente_salida','Corriente de salida (A)','Ej: 110','number'],
+        ['frecuencia_entrada_hz','Frecuencia de red (Hz)','50 / 60','number'],
+        ['rango_frecuencia_salida_hz','Rango de frecuencia de salida','Ej: 0–60 Hz','text'],
+        ['fases','Fases de entrada','1 / 3','text'],
+        ['modo_control','Modo de control','Ej: vectorial o escalar','text'],
+        ['protocolo','Protocolo de comunicación','Ej: Modbus, Profibus','text'],
+        ['motor_asociado','Motor asociado','Código o TAG del motor','text'],
+        ['numero_serie','N.º de serie','Según placa del VDF','text']
+      ],
+      estados:['OPERATIVO','EN MANTENCIÓN','FUERA DE SERVICIO','POR CONFIRMAR']
+    },
+    cpr:{
+      titulo:'Datos de repuesto crítico (CPR)',
+      campos:[
+        ['codigo_repuesto','Código de fabricante / parte','Referencia del repuesto','text'],
+        ['equipo_compatible','Equipo compatible','Bomba o activo al que corresponde','text'],
+        ['stock_requerido','Stock requerido (unidades)','Ej: 2','number'],
+        ['stock_minimo','Stock mínimo (unidades)','Ej: 1','number'],
+        ['plazo_reposicion_dias','Plazo de reposición (días)','Ej: 30','number'],
+        ['criticidad','Criticidad','Ej: A, B o C','text'],
+        ['numero_serie_lote','N.º de serie / lote','Serie o lote, si aplica','text']
+      ],
+      estados:['DISPONIBLE','ASIGNADO','EN REPARACIÓN','MAESTRANZA EXTERNA','POR CONFIRMAR']
+    }
+  };
+  const config=configuracion[tipo]||configuracion.motor;
+  const filas=[];
+  for(let i=0;i<config.campos.length;i+=2){
+    filas.push(`<div class="field-row">${campoTecnicoIngreso(...config.campos[i])}${config.campos[i+1]?campoTecnicoIngreso(...config.campos[i+1]):''}</div>`);
+  }
+  return `
+    <div class="section-label">${config.titulo}</div>
+    ${filas.join('')}
+    <div class="field"><label>Estado</label><select id="ga-estado">
+      <option value="">Sin especificar</option>
+      ${config.estados.map(estado=>`<option value="${estado}">${estado}</option>`).join('')}
+    </select></div>
+  `;
+}
+function datosTecnicosDeActivo(a){
+  if(!a?.datos_tecnicos) return {};
+  if(typeof a.datos_tecnicos==='object') return a.datos_tecnicos;
+  try{return JSON.parse(a.datos_tecnicos);}catch{return {};}
+}
+function etiquetaDatoTecnico(clave){
+  const etiquetas={
+    frecuencia_hz:'Frecuencia',fases:'Fases',numero_serie:'N.º de serie',
+    clase_aislamiento:'Aislamiento',grado_proteccion:'Protección',factor_servicio:'Factor de servicio',
+    caudal:'Caudal',altura_manometrica:'Altura',presion_operacion:'Presión',curva:'Curva',npsh:'NPSH',
+    diametro_succion:'Succión',diametro_descarga:'Descarga',fluido:'Fluido',
+    tension_entrada:'Tensión entrada',tension_salida:'Tensión salida',
+    corriente_entrada:'Corriente entrada',corriente_salida:'Corriente salida',
+    frecuencia_entrada_hz:'Frecuencia entrada',rango_frecuencia_salida_hz:'Rango frecuencia salida',
+    modo_control:'Control',protocolo:'Protocolo',motor_asociado:'Motor asociado',
+    codigo_repuesto:'Código de parte',equipo_compatible:'Equipo compatible',
+    stock_requerido:'Stock requerido',stock_minimo:'Stock mínimo',
+    plazo_reposicion_dias:'Reposición (días)',criticidad:'Criticidad',
+    numero_serie_lote:'N.º de serie / lote'
+  };
+  return etiquetas[clave]||clave.replaceAll('_',' ');
+}
+function resumenDatosTecnicos(a){
+  const datos=datosTecnicosDeActivo(a);
+  const omitidos=new Set(['potencia','corriente','frame','tension','rpm']);
+  return Object.entries(datos)
+    .filter(([clave,valor])=>!omitidos.has(clave)&&valor!==''&&valor!=null)
+    .map(([clave,valor])=>`${etiquetaDatoTecnico(clave)}: ${valor}`)
+    .join(' · ');
+}
+
 function renderConteoTab(){
   const disponibles = activos.filter(a=>!activoRetirado(a));
   const modo = state.gestionModo || 'agregar';
@@ -1438,10 +1557,8 @@ function renderConteoTab(){
           </select></div>
           <div class="field"><label>Código</label><input id="ga-codigo" placeholder="Pendiente / código"></div>
         </div>
-        <div class="field-row"><div class="field"><label>Marca</label><input id="ga-marca" placeholder="Marca"></div><div class="field"><label>Modelo</label><input id="ga-modelo" placeholder="Modelo"></div></div>
-        <div class="field-row"><div class="field"><label>Potencia</label><input id="ga-potencia" placeholder="Ej: 75 HP"></div><div class="field"><label>Corriente (A)</label><input id="ga-corriente" type="number" step="any" placeholder="A"></div></div>
-        <div class="field-row"><div class="field"><label>Frame</label><input id="ga-frame" placeholder="Frame"></div><div class="field"><label>Tensión (V)</label><input id="ga-tension" type="number" step="any" placeholder="V"></div></div>
-        <div class="field-row"><div class="field"><label>RPM</label><input id="ga-rpm" type="number" step="any" placeholder="RPM"></div><div class="field"><label>Estado</label><select id="ga-estado"><option value="">Sin especificar</option><option>NUEVO</option><option>REPARADO</option><option>REPARABLE</option><option>POR CONFIRMAR</option></select></div></div>
+        <div class="field-row"><div class="field"><label>Marca</label><input id="ga-marca" placeholder="Fabricante"></div><div class="field"><label>Modelo</label><input id="ga-modelo" placeholder="Modelo / referencia"></div></div>
+        <div id="ga-datos-tecnicos">${renderCamposTecnicosIngreso(tipoIngreso)}</div>
         <div class="field"><label>1. Patio</label><select id="ga-patio">
           <option value="">— Selecciona un patio —</option>
           ${patiosIngreso.map(p=>`<option value="${p.id}" ${String(patioIngresoId)===String(p.id)?'selected':''}>${etiquetaPatio(p)}</option>`).join('')}
@@ -1730,6 +1847,8 @@ function bindGlobal(){
   const tipoIngreso=document.getElementById('ga-tipo');
   if(tipoIngreso) tipoIngreso.onchange=e=>{
     state.gestionTipo=e.target.value;
+    const contenedorTecnico=document.getElementById('ga-datos-tecnicos');
+    if(contenedorTecnico) contenedorTecnico.innerHTML=renderCamposTecnicosIngreso(e.target.value);
     actualizarPatiosGestion(e.target.value);
   };
   const patioIngreso=document.getElementById('ga-patio');
@@ -1825,13 +1944,24 @@ async function onAgregarActivo(){
   if(zonaId && !zonasDePatio(patioId).some(z=>String(z.id)===String(zonaId))){
     showToast("La zona seleccionada no corresponde al patio");return;
   }
+  const datosTecnicos={};
+  document.querySelectorAll('#ga-datos-tecnicos [data-tecnico]').forEach(campo=>{
+    const dato=campo.value.trim();
+    if(dato!=='') datosTecnicos[campo.dataset.tecnico]=campo.type==='number'?Number(dato):dato;
+  });
   const payload={
     codigo:codigoActivo,nombre,
     tipo_activo:tipoActivo,
     marca:valor('ga-marca'),modelo:valor('ga-modelo'),
-    potencia:valor('ga-potencia'),corriente:numero('ga-corriente'),
-    frame:valor('ga-frame'),tension:numero('ga-tension'),rpm:numero('ga-rpm'),
+    potencia:datosTecnicos.potencia||null,
+    corriente:datosTecnicos.corriente!=null?datosTecnicos.corriente:
+      (datosTecnicos.corriente_salida!=null?datosTecnicos.corriente_salida:null),
+    frame:datosTecnicos.frame||null,
+    tension:datosTecnicos.tension!=null?datosTecnicos.tension:
+      (datosTecnicos.tension_salida!=null?datosTecnicos.tension_salida:null),
+    rpm:datosTecnicos.rpm!=null?datosTecnicos.rpm:null,
     estado:valor('ga-estado'),
+    datos_tecnicos:datosTecnicos,
     ubicacion_id:zonaId || patioId,
     observaciones:valor('ga-observaciones')
   };
