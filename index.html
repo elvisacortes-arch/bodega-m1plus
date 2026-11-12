@@ -1267,6 +1267,7 @@ async function onMoverActivo(){
       item_id: null,
       tipo: null,
       cantidad: 1,
+      stock_resultante: null,
       motivo,
       responsable
     };
@@ -1813,7 +1814,7 @@ async function onAgregarActivo(){
     observaciones:valor('ga-observaciones')
   };
   const movPayload={
-    activo_id:null,item_id:null,tipo:null,cantidad:1,
+    activo_id:null,item_id:null,tipo:null,cantidad:1,stock_resultante:null,
     ubicacion_origen_id:null,ubicacion_destino_id:payload.ubicacion_id,
     tipo_movimiento:'ingreso',motivo:'Alta manual de activo',responsable
   };
@@ -1878,7 +1879,7 @@ async function onRetirarActivo(){
   const labels={maestranza_externa:'Envío a maestranza externa',mantencion:'Retiro por mantención',montaje_bomba:'Montaje en bomba'};
   const motivo='Retiro: '+labels[tipoMotivo]+(detalle?' — '+detalle:'');
   const origenId=a.ubicacion_id||null;
-  const payload={activo_id:a.id,item_id:null,tipo:null,cantidad:1,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:'retiro',motivo,responsable};
+  const payload={activo_id:a.id,item_id:null,tipo:null,cantidad:1,stock_resultante:null,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:'retiro',motivo,responsable};
   const btn=document.getElementById('gr-guardar');
   if(btn){btn.disabled=true;btn.textContent='Registrando retiro...';}
   if(supabaseClient){
