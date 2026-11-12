@@ -837,16 +837,45 @@ function buscarActivosIndexados(consulta){
     .sort((a,b)=>(ordenActivoIndexado.get(String(a.id))||0)-(ordenActivoIndexado.get(String(b.id))||0));
 }
 
-function renderActivos(){
+let temporizadorBusquedaActivos = null;
+
+function renderResultadosActivos(){
   let list = buscarActivosIndexados(state.searchActivo);
   if(state.filtroActivo !== "todos") list = list.filter(a=>a.tipo_activo===state.filtroActivo);
+  const nombresTipo = {motor:'Motores', bomba:'Bombas', cpr:'CPR', vdf:'VDF'};
+  const tipoSeleccionado = nombresTipo[state.filtroActivo] || 'Activos';
 
+  return `
+    ${state.filtroActivo!=='todos' ? `
+      <div class="stat-card" style="margin:0 0 14px;">
+        <div class="num">${list.length}</div>
+        <div class="label">${tipoSeleccionado} encontrados</div>
+      </div>
+    ` : ''}
+    ${list.length===0 ? `<div class="empty-state"><div class="icon">⚙️</div><div class="title">No se encontraron activos</div><div class="sub">Ajusta la búsqueda o selecciona otra subdivisión.</div></div>` : list.map(a=>renderActivoCard(a)).join('')}
+  `;
+}
+
+function actualizarResultadosActivos(){
+  const contenedor = document.getElementById('activos-resultados');
+  if(!contenedor) return;
+  contenedor.innerHTML = renderResultadosActivos();
+  document.querySelectorAll('#activos-resultados .item-card[data-activo]').forEach(card=>{
+    card.onclick = ()=>{ state.activeActivoId=card.dataset.activo; state.sheet='detalle-activo'; render(); };
+  });
+}
+
+function programarBusquedaActivos(valor){
+  state.searchActivo = valor;
+  if(temporizadorBusquedaActivos) clearTimeout(temporizadorBusquedaActivos);
+  temporizadorBusquedaActivos = setTimeout(actualizarResultadosActivos, 120);
+}
+
+function renderActivos(){
   const motores = activos.filter(a=>a.tipo_activo==='motor').length;
   const bombas = activos.filter(a=>a.tipo_activo==='bomba').length;
   const vdfs = activos.filter(a=>a.tipo_activo==='vdf').length;
   const cprs = activos.filter(a=>a.tipo_activo==='cpr').length;
-  const nombresTipo = {motor:'Motores', bomba:'Bombas', cpr:'CPR', vdf:'VDF'};
-  const tipoSeleccionado = nombresTipo[state.filtroActivo] || 'Activos';
 
   return `
     <div class="stats-grid">
@@ -866,13 +895,7 @@ function renderActivos(){
       <div class="chip ${state.filtroActivo==='cpr'?'active':''}" data-activo="cpr">🔩 CPR <span class="chip-count">${cprs}</span></div>
       <div class="chip ${state.filtroActivo==='vdf'?'active':''}" data-activo="vdf">🔌 VDF <span class="chip-count">${vdfs}</span></div>
     </div>
-    ${state.filtroActivo!=='todos' ? `
-      <div class="stat-card" style="margin:0 0 14px;">
-        <div class="num">${list.length}</div>
-        <div class="label">${tipoSeleccionado} encontrados</div>
-      </div>
-    ` : ''}
-    ${list.length===0 ? `<div class="empty-state"><div class="icon">⚙️</div><div class="title">No se encontraron activos</div><div class="sub">Ajusta la búsqueda o selecciona otra subdivisión.</div></div>` : list.map(a=>renderActivoCard(a)).join('')}
+    <div id="activos-resultados">${renderResultadosActivos()}</div>
   `;
 }
 
@@ -1411,7 +1434,7 @@ function bindGlobal(){
   if(state.tab === "stock") bindConsultaStock();
   const searchActivo = document.getElementById('search-activo');
   if(searchActivo){
-    searchActivo.oninput = (e)=>{ state.searchActivo = e.target.value; renderContentOnly(); };
+    searchActivo.oninput = (e)=>{ programarBusquedaActivos(e.target.value); };
     searchActivo.focus();
     searchActivo.selectionStart = searchActivo.selectionEnd = searchActivo.value.length;
   }
@@ -1467,7 +1490,7 @@ function renderContentOnly(){
   });
   const searchActivo = document.getElementById('search-activo');
   if(searchActivo){
-    searchActivo.oninput = (e)=>{ state.searchActivo=e.target.value; renderContentOnly(); };
+    searchActivo.oninput = (e)=>{ programarBusquedaActivos(e.target.value); };
   }
   document.querySelectorAll('#chip-activo .chip').forEach(c=>{
     c.onclick=()=>{ state.filtroActivo=c.dataset.activo; render(); };
