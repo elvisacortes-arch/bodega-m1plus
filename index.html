@@ -665,7 +665,7 @@ function zonasDePatio(patioId){
     if(String(u.id)===String(patioId) || !descendientes.has(String(u.id))) return false;
     const nivel=String(u.nivel||'').toLowerCase();
     const codigo=String(u.codigo||'').toUpperCase();
-    return nivel==='zona' || /^P2-CPR-Z[1-5]$/.test(codigo) || /^Z3-[EFGH]$/.test(codigo);
+    return nivel==='zona' || /^P2-CPR-Z[1-5]$/.test(codigo);
   }).sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||'',undefined,{numeric:true}));
 }
 function patiosPermitidosParaActivo(tipo){
@@ -691,8 +691,9 @@ function ubicacionesAsignablesActivo(tipo,ubicacionActualId=null){
   const candidatas=ubicaciones.filter(u=>{
     if(!idsPermitidos.has(String(u.id))) return false;
     const codigo=String(u.codigo||'').toUpperCase();
+    if(tipo==='motor' && /^Z3-[EFGH]$/.test(codigo)) return false;
     return u.nivel==='patio' || u.nivel==='zona' || u.nivel==='posicion' ||
-      /^P2-CPR-Z[1-5]$/.test(codigo) || /^Z3-[EFGH]$/.test(codigo);
+      /^P2-CPR-Z[1-5]$/.test(codigo);
   });
   if(ubicacionActualId && !candidatas.some(u=>String(u.id)===String(ubicacionActualId))){
     const actual=ubicaciones.find(u=>String(u.id)===String(ubicacionActualId));
@@ -705,7 +706,7 @@ function actualizarZonasGestion(patioId,zonaSeleccionada=''){
   if(!select) return;
   const zonas=zonasDePatio(patioId);
   select.innerHTML=`<option value="">${zonas.length?'— Patio completo / sin zona específica —':'Este patio no tiene zonas registradas'}</option>`+
-    zonas.map(z=>`<option value="${z.id}">${z.codigo} — ${z.descripcion}</option>`).join('');
+    zonas.map(z=>`<option value="${z.id}">${z.descripcion || z.codigo}</option>`).join('');
   select.disabled=zonas.length===0;
   if(zonas.some(z=>String(z.id)===String(zonaSeleccionada))) select.value=zonaSeleccionada;
 }
@@ -1033,7 +1034,7 @@ function renderActivos(){
         <label>2. Zona</label>
         <select id="activos-zona">
           <option value="">Todas las zonas del patio</option>
-          ${zonasDePatio(state.filtroActivoPatio).map(z=>`<option value="${z.id}" ${String(state.filtroActivoZona)===String(z.id)?'selected':''}>${z.codigo} — ${z.descripcion}</option>`).join('')}
+          ${zonasDePatio(state.filtroActivoPatio).map(z=>`<option value="${z.id}" ${String(state.filtroActivoZona)===String(z.id)?'selected':''}>${z.descripcion || z.codigo}</option>`).join('')}
         </select>
       </div>
     ` : ''}
@@ -1427,7 +1428,7 @@ function renderConteoTab(){
         </select></div>
         <div class="field"><label>2. Zona</label><select id="ga-zona" ${zonasIngreso.length?'':'disabled'}>
           <option value="">${zonasIngreso.length?'— Patio completo / sin zona específica —':'Este patio no tiene zonas registradas'}</option>
-          ${zonasIngreso.map(z=>`<option value="${z.id}" ${String(zonaIngresoId)===String(z.id)?'selected':''}>${z.codigo} — ${z.descripcion}</option>`).join('')}
+          ${zonasIngreso.map(z=>`<option value="${z.id}" ${String(zonaIngresoId)===String(z.id)?'selected':''}>${z.descripcion || z.codigo}</option>`).join('')}
         </select></div>
         <div class="field"><label>Observaciones</label><textarea id="ga-observaciones" rows="2" placeholder="Información adicional"></textarea></div>
         <button class="btn btn-primary" id="ga-guardar">Guardar activo</button>
