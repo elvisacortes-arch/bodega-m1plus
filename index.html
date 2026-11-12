@@ -262,6 +262,11 @@
   .gestion-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;}
   .gestion-option{padding:12px 10px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font:600 13px var(--sans);cursor:pointer;}
   .gestion-option.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+  .gestion-option[data-gestion-mode="retirar"].active{border-color:#55aaa5;background:#246e70;color:#e9ffff;}
+  .gestion-panel.retirar{border-color:#347f80;}
+  .gestion-panel.retirar .gestion-title{color:#82c6c1;}
+  .btn-retirar{background:#287b7d;color:#efffff;border:1px solid #4d9c9d;}
+  .btn-retirar:active{background:#22696b;}
   .gestion-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
   .gestion-title{font-size:15px;font-weight:700;margin-bottom:5px;}
   .gestion-help{font-size:12px;line-height:1.45;color:var(--text-muted);margin-bottom:14px;}
@@ -1258,7 +1263,7 @@ function renderConteoTab(){
     </div>
     <div class="gestion-switch">
       <button class="gestion-option ${modo==='agregar'?'active':''}" data-gestion-mode="agregar">＋ Agregar activo</button>
-      <button class="gestion-option ${modo==='retirar'?'active':''}" data-gestion-mode="retirar">↗ Registrar retiro</button>
+      <button class="gestion-option ${modo==='retirar'?'active':''}" data-gestion-mode="retirar">↗ Retirar activo</button>
     </div>
     ${modo==='agregar' ? `
       <div class="gestion-panel">
@@ -1280,8 +1285,8 @@ function renderConteoTab(){
         <button class="btn btn-primary" id="ga-guardar">Guardar activo</button>
       </div>
     ` : `
-      <div class="gestion-panel">
-        <div class="gestion-title">Retiro de bodega</div>
+      <div class="gestion-panel retirar">
+        <div class="gestion-title">Retirar activo</div>
         <div class="gestion-help">Selecciona el activo y la razón de salida. El activo se conserva en el sistema y queda marcado fuera de bodega.</div>
         <div class="field"><label>Activo *</label><select id="gr-activo">
           <option value="">— Selecciona un activo disponible —</option>
@@ -1295,7 +1300,7 @@ function renderConteoTab(){
         </select></div>
         <div class="field"><label>Detalle / referencia</label><input id="gr-detalle" placeholder="Ej: número de OT, bomba o destino"></div>
         <div class="gestion-alert">Al confirmar, se quitará de la ubicación de bodega y se registrará en el historial con usuario, fecha y motivo.</div>
-        <button class="btn btn-danger" id="gr-guardar" ${activosOpciones.length?'':'disabled'}>Confirmar retiro</button>
+        <button class="btn btn-retirar" id="gr-guardar" ${activosOpciones.length?'':'disabled'}>Retirar activo</button>
         ${activosOpciones.length ? '' : '<div class="gestion-summary">No hay activos disponibles para retirar.</div>'}
       </div>
     `}
@@ -1667,7 +1672,7 @@ async function onRetirarActivo(){
       showToast("Retiro registrado y guardado en el historial");
       render();
     }catch(e){
-      if(btn){btn.disabled=false;btn.textContent='Confirmar retiro';}
+      if(btn){btn.disabled=false;btn.textContent='Retirar activo';}
       showToast("No se pudo registrar el retiro: "+(e.message||"error"));
     }
   }else{
