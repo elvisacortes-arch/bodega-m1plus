@@ -332,6 +332,22 @@ let items = [
   { id:"8", codigo:"VFD-SIE-0089", nombre:"Módulo IGBT Sinamics G120", tipo:"repuesto", categoria_id:"cat-vfd", ubicacion:"Est. A - N2 - C8", unidad:"un", stock_actual:3, stock_minimo:2, proveedor:"Siemens", equipo_asociado:"Variador Siemens G120" },
 ];
 
+function sincronizarActivosServidor(datos){
+  if(!datos) return;
+  const idsServidor=new Set(datos.map(a=>String(a.id)));
+  const altasLocales=activos.filter(a=>!idsServidor.has(String(a.id)));
+  activos=[...altasLocales,...datos];
+}
+function sincronizarMovimientosServidor(datos){
+  if(!datos) return;
+  const delServidor=datos.map(m=>({...m,fecha:m.created_at||m.fecha}));
+  const idsServidor=new Set(delServidor.filter(m=>m.id!=null).map(m=>String(m.id)));
+  const movimientosLocales=movimientos.filter(m=>
+    m.activo_id && (m.id==null || !idsServidor.has(String(m.id)))
+  );
+  movimientos=[...movimientosLocales,...delServidor];
+}
+
 let movimientos = [
   { id:"m1", item_id:"1", tipo:"salida", cantidad:1, stock_resultante:2, motivo:"OT-1187 mantención preventiva", responsable:"J. Herrera", fecha:new Date(Date.now()-86400000*2).toISOString() },
   { id:"m2", item_id:"4", tipo:"ajuste_conteo", cantidad:1, stock_resultante:1, motivo:"Conteo físico mensual", responsable:"C. Vidal", fecha:new Date(Date.now()-86400000*5).toISOString() },
@@ -1327,13 +1343,14 @@ function renderMovimientos(){
       const ac = activos.find(a=>String(a.id)===String(m.activo_id));
       const fecha = m.fecha||m.created_at;
 
-      if(ac){
+      if(ac || m.activo_id){
         const origen = m.ubicacion_origen_id ? ubicacionRuta(m.ubicacion_origen_id) : 'Sin origen';
         const destino = m.ubicacion_destino_id ? ubicacionRuta(m.ubicacion_destino_id) : 'Sin destino';
+        const nombreActivo = ac ? (ac.codigo||ac.nombre||'Activo') : (m.activo_codigo||m.activo_nombre||'Activo '+String(m.activo_id).slice(0,8));
         return `
         <div class="movement-row">
           <div>
-            <div style="font-weight:600;">${ac.codigo||ac.nombre||'Activo'}</div>
+            <div style="font-weight:600;">${nombreActivo}</div>
             <div style="color:var(--text-muted);margin-top:2px;">${origen} → ${destino}</div>
             <div style="color:var(--text-muted);margin-top:2px;">${m.motivo||''} · ${m.responsable||''} · ${fmtFecha(fecha)}</div>
           </div>
@@ -1855,7 +1872,7 @@ function onConectarSupabase(){
     try{
       const { data: itemsData } = await supabaseClient.from('items').select('*');
       const { data: catsData } = await supabaseClient.from('categorias').select('*');
-      const { data: movsData } = await supabaseClient.from('movimientos').select('*');
+      const { data: movsData } = await supabaseClient.from('movimientos').select('*').order('created_at',{ascending:false});
       const { data: activosData } = await supabaseClient.from('activos').select('*');
       const { data: ubicacionesData } = await supabaseClient.from('ubicaciones').select('*');
       if(itemsData && itemsData.length){
@@ -1864,10 +1881,8 @@ function onConectarSupabase(){
       if(catsData && catsData.length){
         categorias = catsData.map(c=>({id:c.id, nombre:c.nombre, padre:c.categoria_padre_id}));
       }
-      if(movsData && movsData.length){
-        movimientos = movsData.map(m=>({...m, fecha:m.created_at}));
-      }
-      if(activosData){ activos = activosData; }
+      if(movsData){ sincronizarMovimientosServidor(movsData); }
+      if(activosData){ sincronizarActivosServidor(activosData); }
       if(ubicacionesData){ ubicaciones = ubicacionesData; }
       showToast("Conectado — datos sincronizados");
     }catch(e){
@@ -1905,7 +1920,7 @@ async function autoConnectSupabase(){
       ] = await Promise.all([
         supabaseClient.from('items').select('*'),
         supabaseClient.from('categorias').select('*'),
-        supabaseClient.from('movimientos').select('*'),
+        supabaseClient.from('movimientos').select('*').order('created_at',{ascending:false}),
         supabaseClient.from('activos').select('*'),
         supabaseClient.from('ubicaciones').select('*')
       ]);
@@ -1933,15 +1948,8 @@ async function autoConnectSupabase(){
         }));
       }
 
-      if(movsData){
-        movimientos = movsData.map(m=>({
-          ...m,
-          fecha:m.created_at || m.fecha
-        }));
-      }
-      if(activosData){
-        activos = activosData;
-      }
+      if(movsData){ sincronizarMovimientosServidor(movsData); }
+      if(activosData){ sincronizarActivosServidor(activosData); }
       if(ubicacionesData){
         ubicaciones = ubicacionesData;
       }
