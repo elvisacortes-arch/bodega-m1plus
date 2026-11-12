@@ -759,19 +759,88 @@ function bindConsultaStock(){
   if(posicion) posicion.onchange = e=>{ state.stockPosicion=e.target.value; render(); };
 }
 
-function renderActivos(){
-  let list = activos.slice();
-  if(state.filtroActivo !== "todos") list = list.filter(a=>a.tipo_activo===state.filtroActivo);
-  if(state.searchActivo.trim()){
-    const q = state.searchActivo.trim().toLowerCase();
-    list = list.filter(a =>
-      (a.codigo||"").toLowerCase().includes(q) ||
-      (a.nombre||"").toLowerCase().includes(q) ||
-      (a.marca||"").toLowerCase().includes(q) ||
-      (a.modelo||"").toLowerCase().includes(q) ||
-      (a.ubicacion||"").toLowerCase().includes(q)
-    );
+let indiceActivosPorTrigrama = new Map();
+let textoActivoIndexado = new Map();
+let activoIndexadoPorId = new Map();
+let ordenActivoIndexado = new Map();
+let activosReferenciaIndice = null;
+let ubicacionesReferenciaIndice = null;
+
+function normalizarBusquedaActivo(valor){
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+function reconstruirIndiceActivos(){
+  indiceActivosPorTrigrama = new Map();
+  textoActivoIndexado = new Map();
+  activoIndexadoPorId = new Map();
+  ordenActivoIndexado = new Map();
+
+  activos.forEach((a, indice)=>{
+    const id = String(a.id);
+    const ubicacion = a.ubicacion_id ? ubicacionNombre(a.ubicacion_id) : '';
+    const ruta = a.ubicacion_id ? ubicacionRuta(a.ubicacion_id) : '';
+    const texto = normalizarBusquedaActivo([
+      a.codigo, a.nombre, a.marca, a.modelo, a.ubicacion, ubicacion, ruta
+    ].filter(Boolean).join(' '));
+
+    activoIndexadoPorId.set(id, a);
+    textoActivoIndexado.set(id, texto);
+    ordenActivoIndexado.set(id, indice);
+
+    const trigramaVistos = new Set();
+    for(let i=0; i<=texto.length-3; i++){
+      trigramaVistos.add(texto.slice(i, i+3));
+    }
+    trigramaVistos.forEach(trigrama=>{
+      if(!indiceActivosPorTrigrama.has(trigrama)){
+        indiceActivosPorTrigrama.set(trigrama, new Set());
+      }
+      indiceActivosPorTrigrama.get(trigrama).add(id);
+    });
+  });
+
+  activosReferenciaIndice = activos;
+  ubicacionesReferenciaIndice = ubicaciones;
+}
+
+function buscarActivosIndexados(consulta){
+  const q = normalizarBusquedaActivo(consulta);
+  if(!q) return activos.slice();
+
+  if(activosReferenciaIndice !== activos || ubicacionesReferenciaIndice !== ubicaciones){
+    reconstruirIndiceActivos();
   }
+
+  // Para consultas cortas, el índice por trigramas no aporta candidatos suficientes.
+  if(q.length < 3){
+    return activos.filter(a=>(textoActivoIndexado.get(String(a.id))||'').includes(q));
+  }
+
+  const trigramas = new Set();
+  for(let i=0; i<=q.length-3; i++) trigramas.add(q.slice(i, i+3));
+  const conjuntos = [...trigramas].map(t=>indiceActivosPorTrigrama.get(t));
+  if(conjuntos.some(c=>!c)) return [];
+
+  conjuntos.sort((a,b)=>a.size-b.size);
+  const candidatos = [...conjuntos[0]].filter(id=>conjuntos.every(c=>c.has(id)));
+
+  return candidatos
+    .filter(id=>(textoActivoIndexado.get(id)||'').includes(q))
+    .map(id=>activoIndexadoPorId.get(id))
+    .filter(Boolean)
+    .sort((a,b)=>(ordenActivoIndexado.get(String(a.id))||0)-(ordenActivoIndexado.get(String(b.id))||0));
+}
+
+function renderActivos(){
+  let list = buscarActivosIndexados(state.searchActivo);
+  if(state.filtroActivo !== "todos") list = list.filter(a=>a.tipo_activo===state.filtroActivo);
+
   const motores = activos.filter(a=>a.tipo_activo==='motor').length;
   const bombas = activos.filter(a=>a.tipo_activo==='bomba').length;
   const vdfs = activos.filter(a=>a.tipo_activo==='vdf').length;
@@ -788,7 +857,7 @@ function renderActivos(){
       <div class="stat-card"><div class="num">${cprs}</div><div class="label">CPR</div></div>
     </div>
     <div class="search-row">
-      <div class="search-box"><span>🔍</span><input id="search-activo" placeholder="Buscar activo, marca, modelo..." value="${state.searchActivo}" /></div>
+      <div class="search-box"><span>🔍</span><input id="search-activo" placeholder="Búsqueda rápida por código, activo, modelo o ubicación..." value="${state.searchActivo}" /></div>
     </div>
     <div class="chip-row" id="chip-activo">
       <div class="chip ${state.filtroActivo==='todos'?'active':''}" data-activo="todos">Todos <span class="chip-count">${activos.length}</span></div>
@@ -1032,6 +1101,7 @@ async function onMoverActivo(){
     }
 
     a.ubicacion_id = destinoId;
+    reconstruirIndiceActivos();
     movimientos.unshift({
       ...(movData || payload),
       fecha: movData?.created_at || new Date().toISOString()
@@ -1081,6 +1151,7 @@ async function onGuardarUbicacionActivo(){
   }
 
   a.ubicacion_id = ubicacionId;
+  reconstruirIndiceActivos();
   showToast(ubicacionId ? "Ubicación actualizada" : "Ubicación eliminada");
   render();
 }
