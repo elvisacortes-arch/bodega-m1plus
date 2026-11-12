@@ -685,6 +685,28 @@ function patioPredeterminadoActivo(tipo){
   const codigo=tipo==='motor'?'PATIO-03':tipo==='cpr'?'PATIO-02':null;
   return patios.find(u=>u.codigo===codigo)?.id || patios[0]?.id || '';
 }
+function actualizarZonasGestion(patioId,zonaSeleccionada=''){
+  const select=document.getElementById('ga-zona');
+  if(!select) return;
+  const zonas=zonasDePatio(patioId);
+  select.innerHTML=`<option value="">${zonas.length?'— Patio completo / sin zona específica —':'Este patio no tiene zonas registradas'}</option>`+
+    zonas.map(z=>`<option value="${z.id}">${z.codigo} — ${z.descripcion}</option>`).join('');
+  select.disabled=zonas.length===0;
+  if(zonas.some(z=>String(z.id)===String(zonaSeleccionada))) select.value=zonaSeleccionada;
+}
+function actualizarPatiosGestion(tipo,patioSeleccionado=''){
+  const select=document.getElementById('ga-patio');
+  if(!select) return;
+  const patios=patiosPermitidosParaActivo(tipo);
+  const elegido=patios.some(p=>String(p.id)===String(patioSeleccionado))
+    ? patioSeleccionado : patioPredeterminadoActivo(tipo);
+  select.innerHTML='<option value="">— Selecciona un patio —</option>'+
+    patios.map(p=>`<option value="${p.id}">${etiquetaPatio(p)}</option>`).join('');
+  select.value=elegido;
+  state.gestionPatio=elegido;
+  state.gestionZona='';
+  actualizarZonasGestion(elegido,'');
+}
 function activoEnPatio(a,patioId){
   if(!a?.ubicacion_id || !patioId) return false;
   return ubicacionesDescendientes(patioId).has(String(a.ubicacion_id));
@@ -1659,15 +1681,13 @@ function bindGlobal(){
   const tipoIngreso=document.getElementById('ga-tipo');
   if(tipoIngreso) tipoIngreso.onchange=e=>{
     state.gestionTipo=e.target.value;
-    state.gestionPatio=patioPredeterminadoActivo(e.target.value);
-    state.gestionZona='';
-    render();
+    actualizarPatiosGestion(e.target.value);
   };
   const patioIngreso=document.getElementById('ga-patio');
   if(patioIngreso) patioIngreso.onchange=e=>{
     state.gestionPatio=e.target.value;
     state.gestionZona='';
-    render();
+    actualizarZonasGestion(e.target.value,'');
   };
   const zonaIngreso=document.getElementById('ga-zona');
   if(zonaIngreso) zonaIngreso.onchange=e=>{state.gestionZona=e.target.value;};
@@ -1743,14 +1763,27 @@ async function onAgregarActivo(){
     showToast("Código duplicado: "+(duplicadoLocal.codigo||codigoActivo)+" ya corresponde a "+(duplicadoLocal.nombre||"otro activo"));
     return;
   }
+  const tipoActivo=document.getElementById('ga-tipo').value;
+  const patioId=document.getElementById('ga-patio').value||null;
+  const zonaId=document.getElementById('ga-zona').value||null;
+  const patioElegido=ubicaciones.find(u=>String(u.id)===String(patioId));
+  if(tipoActivo==='motor' && patioElegido?.codigo!=='PATIO-03'){
+    showToast("Los motores solo se pueden asignar al Patio 3");return;
+  }
+  if(tipoActivo==='cpr' && patioElegido?.codigo!=='PATIO-02'){
+    showToast("Los CPR solo se pueden asignar al Patio 2");return;
+  }
+  if(zonaId && !zonasDePatio(patioId).some(z=>String(z.id)===String(zonaId))){
+    showToast("La zona seleccionada no corresponde al patio");return;
+  }
   const payload={
     codigo:codigoActivo,nombre,
-    tipo_activo:document.getElementById('ga-tipo').value,
+    tipo_activo:tipoActivo,
     marca:valor('ga-marca'),modelo:valor('ga-modelo'),
     potencia:valor('ga-potencia'),corriente:numero('ga-corriente'),
     frame:valor('ga-frame'),tension:numero('ga-tension'),rpm:numero('ga-rpm'),
     estado:valor('ga-estado'),
-    ubicacion_id:document.getElementById('ga-zona').value || document.getElementById('ga-patio').value || null,
+    ubicacion_id:zonaId || patioId,
     observaciones:valor('ga-observaciones')
   };
   const movPayload={
