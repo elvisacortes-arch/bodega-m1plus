@@ -1023,7 +1023,7 @@ function sheetDetalleActivo(){
       <select id="activo-ubicacion">
         <option value="">— Sin ubicación —</option>
         ${ubicaciones
-          .filter(u=>u.nivel==='posicion')
+          .filter(u=>u.nivel==='posicion' || u.codigo==='PATIO-03')
           .slice()
           .sort((x,y)=>(x.codigo||'').localeCompare(y.codigo||''))
           .map(u=>`
@@ -1045,7 +1045,7 @@ function sheetDetalleActivo(){
         <select id="mover-activo-destino">
           <option value="">— Selecciona una posición —</option>
           ${ubicaciones
-            .filter(u=>u.nivel==='posicion')
+            .filter(u=>u.nivel==='posicion' || u.codigo==='PATIO-03')
             .slice()
             .sort((x,y)=>(x.codigo||'').localeCompare(y.codigo||''))
             .map(u=>`
@@ -1258,7 +1258,7 @@ function renderCategorias(){
 function renderConteoTab(){
   const disponibles = activos.filter(a=>!activoRetirado(a));
   const modo = state.gestionModo || 'agregar';
-  const posiciones = ubicaciones.filter(u=>u.nivel==='posicion').slice().sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||''));
+  const posiciones = ubicaciones.filter(u=>u.nivel==='posicion' || u.codigo==='PATIO-03').slice().sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||''));
   const activosOpciones = disponibles.slice().sort((a,b)=>(a.codigo||a.nombre||'').localeCompare(b.codigo||b.nombre||''));
   return `
     <div style="font-size:19px;font-weight:700;">Gestión de activos</div>
