@@ -1000,7 +1000,8 @@ function ultimoMovimientoActivo(a){
 }
 function activoRetirado(a){
   const ultimo=ultimoMovimientoActivo(a);
-  return !a.ubicacion_id && ultimo?.tipo_movimiento==='retiro';
+  const tiposFueraBodega=['SALIDA_REPARACION','SALIDA_EXTERNA','SALIDA_MANTENCION','MONTAJE_BOMBA','BAJA'];
+  return !a.ubicacion_id && tiposFueraBodega.includes(String(ultimo?.tipo_movimiento||'').toUpperCase());
 }
 
 function renderActivos(){
@@ -1263,7 +1264,7 @@ async function onMoverActivo(){
       activo_id: a.id,
       ubicacion_origen_id: origenId,
       ubicacion_destino_id: destinoId,
-      tipo_movimiento: 'traslado',
+      tipo_movimiento: 'TRASLADO',
       item_id: null,
       tipo: null,
       cantidad: 1,
@@ -1816,7 +1817,7 @@ async function onAgregarActivo(){
   const movPayload={
     activo_id:null,item_id:null,tipo:null,cantidad:1,stock_resultante:null,
     ubicacion_origen_id:null,ubicacion_destino_id:payload.ubicacion_id,
-    tipo_movimiento:'ingreso',motivo:'Alta manual de activo',responsable
+    tipo_movimiento:'INGRESO',motivo:'Alta manual de activo',responsable
   };
   const btn=document.getElementById('ga-guardar');
   if(btn){btn.disabled=true;btn.textContent='Guardando...';}
@@ -1877,9 +1878,14 @@ async function onRetirarActivo(){
   if(!tipoMotivo){showToast("Selecciona el motivo del retiro");return;}
   if(!responsable){showToast("Ingresa quién realiza el retiro");return;}
   const labels={maestranza_externa:'Envío a maestranza externa',mantencion:'Retiro por mantención',montaje_bomba:'Montaje en bomba'};
+  const tiposMovimiento={
+    maestranza_externa:'SALIDA_EXTERNA',
+    mantencion:'SALIDA_MANTENCION',
+    montaje_bomba:'MONTAJE_BOMBA'
+  };
   const motivo='Retiro: '+labels[tipoMotivo]+(detalle?' — '+detalle:'');
   const origenId=a.ubicacion_id||null;
-  const payload={activo_id:a.id,item_id:null,tipo:null,cantidad:1,stock_resultante:null,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:'retiro',motivo,responsable};
+  const payload={activo_id:a.id,item_id:null,tipo:null,cantidad:1,stock_resultante:null,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:tiposMovimiento[tipoMotivo],motivo,responsable};
   const btn=document.getElementById('gr-guardar');
   if(btn){btn.disabled=true;btn.textContent='Registrando retiro...';}
   if(supabaseClient){
