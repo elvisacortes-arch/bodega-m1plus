@@ -774,6 +774,7 @@ function renderConsultaStock(){
   const patios = ubicaciones.filter(u=>u.nivel==='patio' || /^PATIO-/.test(u.codigo));
   const patio = ubicaciones.find(u=>String(u.id)===String(state.stockPatio));
 
+const esPatioMotores = patio && patio.codigo === 'PATIO-03';
 let sectores = patio ? ubicacionesHijas(patio.id) : [];
 
 // Patio 2: mostrar el sector CPR y cualquier sector que contenga activos CPR.
@@ -784,9 +785,13 @@ if(patio && patio.codigo === 'PATIO-02'){
   );
 }
 
-// Patio 3 no tiene sectores descendientes registrados; la consulta se realiza por tipo de activo.
+// En Patio 3, las zonas de almacenamiento son hijas directas del patio.
+if(esPatioMotores){
+  sectores = zonasDePatio(patio.id);
+}
+
 const sector = ubicaciones.find(u=>String(u.id)===String(state.stockSector));
-const zonas = sector ? ubicacionesHijas(sector.id) : [];
+const zonas = !esPatioMotores && sector ? ubicacionesHijas(sector.id) : [];
 const zona = ubicaciones.find(u=>String(u.id)===String(state.stockZona));
 const posiciones = zona ? ubicacionesHijas(zona.id) : [];
 const esPatioRepuestos = patio && patio.codigo === 'PATIO-01';
@@ -845,14 +850,14 @@ if(state.stockPatio){
       </select>
     </div>
 
-    ${state.stockPatio ? `<div class="field"><label>2. Sector</label>
+    ${state.stockPatio ? `<div class="field"><label>${esPatioMotores ? '2. Zona' : '2. Sector'}</label>
       <select id="stock-sector">
-        <option value="">Todos los sectores</option>
+        <option value="">${esPatioMotores ? 'Todas las zonas del patio' : 'Todos los sectores'}</option>
         ${sectores.map(u=>`<option value="${u.id}" ${state.stockSector===u.id?'selected':''}>${u.descripcion}</option>`).join('')}
       </select>
     </div>` : ''}
 
-    ${state.stockSector ? `<div class="field"><label>3. Zona</label>
+    ${state.stockSector && !esPatioMotores ? `<div class="field"><label>3. Zona</label>
       <select id="stock-zona">
         <option value="">Todas las zonas</option>
         ${zonas.map(u=>`<option value="${u.id}" ${state.stockZona===u.id?'selected':''}>${u.descripcion}</option>`).join('')}
