@@ -259,6 +259,14 @@
   .asset-history-route{font-size:12.5px;font-weight:600;}
   .asset-history-meta{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45;}
   .asset-history-tag{display:inline-block;font-family:var(--mono);font-size:9.5px;padding:2px 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent);text-transform:uppercase;margin-right:5px;}
+  .gestion-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;}
+  .gestion-option{padding:12px 10px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font:600 13px var(--sans);cursor:pointer;}
+  .gestion-option.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+  .gestion-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;}
+  .gestion-title{font-size:15px;font-weight:700;margin-bottom:5px;}
+  .gestion-help{font-size:12px;line-height:1.45;color:var(--text-muted);margin-bottom:14px;}
+  .gestion-alert{padding:10px 12px;border-radius:8px;background:var(--danger-soft);border:1px solid #c0473f66;color:#f08b83;font-size:12px;line-height:1.45;margin:12px 0;}
+  .gestion-summary{font-size:12px;color:var(--text-muted);margin:4px 0 12px;}
 </style>
 </head>
 <body>
@@ -482,7 +490,7 @@ function renderTopbar(){
   </div>`;
 }
 function tabTitle(){
-  return {catalogo:"Catálogo", stock:"Consulta de Stock", activos:"Activos", conteo:"Conteo de Stock", categorias:"Clasificación", movimientos:"Movimientos", config:"Config"}[state.tab] || "";
+  return {catalogo:"Catálogo", stock:"Consulta de Stock", activos:"Activos", conteo:"Gestión de activos", categorias:"Clasificación", movimientos:"Movimientos", config:"Config"}[state.tab] || "";
 }
 
 function renderBottomNav(){
@@ -490,7 +498,7 @@ function renderBottomNav(){
     {id:"catalogo", icon:"▤", label:"Catálogo"},
     {id:"stock", icon:"⌕", label:"Consulta"},
     {id:"activos", icon:"⚙", label:"Activos"},
-    {id:"conteo", icon:"✓", label:"Conteo"},
+    {id:"conteo", icon:"＋", label:"Gestión"},
     {id:"movimientos", icon:"↕", label:"Historial"},
     {id:"config", icon:"⚙", label:"Config"},
   ];
@@ -882,6 +890,15 @@ function programarBusquedaActivos(valor){
   temporizadorBusquedaActivos = setTimeout(actualizarResultadosActivos, 120);
 }
 
+function ultimoMovimientoActivo(a){
+  return movimientos.filter(m=>String(m.activo_id||'')===String(a.id))
+    .slice().sort((x,y)=>new Date(y.fecha||y.created_at||0)-new Date(x.fecha||x.created_at||0))[0] || null;
+}
+function activoRetirado(a){
+  const ultimo=ultimoMovimientoActivo(a);
+  return !a.ubicacion_id && ultimo?.tipo_movimiento==='retiro';
+}
+
 function renderActivos(){
   const motores = activos.filter(a=>a.tipo_activo==='motor').length;
   const bombas = activos.filter(a=>a.tipo_activo==='bomba').length;
@@ -928,7 +945,7 @@ function estadoClase(a){
 function renderActivoCard(a){
   const icon = a.tipo_activo==='motor' ? '⚙️' : a.tipo_activo==='bomba' ? '💧' : a.tipo_activo==='vdf' ? '🔌' : '🔩';
   const technical = [a.potencia, a.tension ? `${a.tension} V` : null, a.rpm ? `${a.rpm} RPM` : null].filter(Boolean).join(' · ');
-  const loc = a.ubicacion_id ? ubicacionNombre(a.ubicacion_id) : 'Sin ubicación';
+  const loc = activoRetirado(a) ? 'Fuera de bodega' : (a.ubicacion_id ? ubicacionNombre(a.ubicacion_id) : 'Sin ubicación');
   const ruta = a.ubicacion_id ? ubicacionRuta(a.ubicacion_id) : '';
   return `
   <div class="item-card" data-activo="${a.id}">
@@ -939,7 +956,7 @@ function renderActivoCard(a){
           <div class="item-code">${a.codigo||'Código pendiente'}</div>
           <div class="item-name">${a.nombre||'Activo sin nombre'}</div>
         </div>
-        <div class="status-badge ${estadoClase(a)}">${a.estado||'—'}</div>
+        <div class="status-badge ${activoRetirado(a)?'externa':estadoClase(a)}">${activoRetirado(a)?'FUERA DE BODEGA':(a.estado||'—')}</div>
       </div>
       <div class="item-meta">
         <span class="type-tag activo">${a.tipo_activo}</span>
@@ -1225,13 +1242,60 @@ function renderCategorias(){
 }
 
 function renderConteoTab(){
-  const list = items.slice().sort((a,b)=> stockLevel(a)==='crit'?-1:1);
+  const disponibles = activos.filter(a=>!activoRetirado(a));
+  const modo = state.gestionModo || 'agregar';
+  const posiciones = ubicaciones.filter(u=>u.nivel==='posicion').slice().sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||''));
+  const activosOpciones = disponibles.slice().sort((a,b)=>(a.codigo||a.nombre||'').localeCompare(b.codigo||b.nombre||''));
   return `
-  <div class="section-label">Conteo rápido de stock</div>
-  <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
-    Toca un ítem para registrar el conteo físico y ajustar su stock actual.
-  </div>
-  ${list.map(i=>renderItemCard(i)).join('')}
+    <div style="font-size:19px;font-weight:700;">Gestión de activos</div>
+    <div class="gestion-help" style="margin:5px 0 0;">Registra el ingreso manual de un activo o su salida de bodega, manteniendo trazabilidad.</div>
+    <div class="stats-grid" style="margin-top:12px;">
+      <div class="stat-card ok"><div class="num">${disponibles.length}</div><div class="label">Activos disponibles</div></div>
+      <div class="stat-card"><div class="num">${activos.length-disponibles.length}</div><div class="label">Fuera de bodega</div></div>
+    </div>
+    <div class="gestion-switch">
+      <button class="gestion-option ${modo==='agregar'?'active':''}" data-gestion-mode="agregar">＋ Agregar activo</button>
+      <button class="gestion-option ${modo==='retirar'?'active':''}" data-gestion-mode="retirar">↗ Registrar retiro</button>
+    </div>
+    ${modo==='agregar' ? `
+      <div class="gestion-panel">
+        <div class="gestion-title">Ingreso de un activo</div>
+        <div class="gestion-help">El código es opcional si todavía está en creación. Asigna una posición si ya está disponible.</div>
+        <div class="field"><label>Nombre del activo *</label><input id="ga-nombre" placeholder="Ej: Motor eléctrico unidad 4"></div>
+        <div class="field-row">
+          <div class="field"><label>Tipo *</label><select id="ga-tipo">
+            <option value="motor">Motor</option><option value="bomba">Bomba</option><option value="cpr">CPR</option><option value="vdf">VDF</option>
+          </select></div>
+          <div class="field"><label>Código</label><input id="ga-codigo" placeholder="Pendiente / código"></div>
+        </div>
+        <div class="field-row"><div class="field"><label>Marca</label><input id="ga-marca" placeholder="Marca"></div><div class="field"><label>Modelo</label><input id="ga-modelo" placeholder="Modelo"></div></div>
+        <div class="field-row"><div class="field"><label>Potencia</label><input id="ga-potencia" placeholder="Ej: 75 HP"></div><div class="field"><label>Corriente (A)</label><input id="ga-corriente" type="number" step="any" placeholder="A"></div></div>
+        <div class="field-row"><div class="field"><label>Frame</label><input id="ga-frame" placeholder="Frame"></div><div class="field"><label>Tensión (V)</label><input id="ga-tension" type="number" step="any" placeholder="V"></div></div>
+        <div class="field-row"><div class="field"><label>RPM</label><input id="ga-rpm" type="number" step="any" placeholder="RPM"></div><div class="field"><label>Estado</label><select id="ga-estado"><option value="">Sin especificar</option><option>NUEVO</option><option>REPARADO</option><option>REPARABLE</option><option>POR CONFIRMAR</option></select></div></div>
+        <div class="field"><label>Ubicación / posición</label><select id="ga-ubicacion"><option value="">— Sin ubicación —</option>${posiciones.map(u=>`<option value="${u.id}">${u.codigo} — ${u.descripcion}</option>`).join('')}</select></div>
+        <div class="field"><label>Observaciones</label><textarea id="ga-observaciones" rows="2" placeholder="Información adicional"></textarea></div>
+        <button class="btn btn-primary" id="ga-guardar">Guardar activo</button>
+      </div>
+    ` : `
+      <div class="gestion-panel">
+        <div class="gestion-title">Retiro de bodega</div>
+        <div class="gestion-help">Selecciona el activo y la razón de salida. El activo se conserva en el sistema y queda marcado fuera de bodega.</div>
+        <div class="field"><label>Activo *</label><select id="gr-activo">
+          <option value="">— Selecciona un activo disponible —</option>
+          ${activosOpciones.map(a=>`<option value="${a.id}">${a.codigo||'Sin código'} · ${a.nombre||'Activo'} · ${a.modelo||a.tipo_activo||''}</option>`).join('')}
+        </select></div>
+        <div class="field"><label>Motivo del retiro *</label><select id="gr-motivo">
+          <option value="">— Selecciona el motivo —</option>
+          <option value="maestranza_externa">Envío a maestranza externa</option>
+          <option value="mantencion">Retiro por mantención</option>
+          <option value="montaje_bomba">Montaje en bomba</option>
+        </select></div>
+        <div class="field"><label>Detalle / referencia</label><input id="gr-detalle" placeholder="Ej: número de OT, bomba o destino"></div>
+        <div class="gestion-alert">Al confirmar, se quitará de la ubicación de bodega y se registrará en el historial con usuario, fecha y motivo.</div>
+        <button class="btn btn-danger" id="gr-guardar" ${activosOpciones.length?'':'disabled'}>Confirmar retiro</button>
+        ${activosOpciones.length ? '' : '<div class="gestion-summary">No hay activos disponibles para retirar.</div>'}
+      </div>
+    `}
   `;
 }
 
@@ -1470,6 +1534,14 @@ function bindGlobal(){
   const moverActivoBtn = document.getElementById('mover-activo-btn');
   if(moverActivoBtn) moverActivoBtn.onclick = onMoverActivo;
 
+  document.querySelectorAll('[data-gestion-mode]').forEach(btn=>{
+    btn.onclick=()=>{ state.gestionModo=btn.dataset.gestionMode; render(); };
+  });
+  const guardarActivo = document.getElementById('ga-guardar');
+  if(guardarActivo) guardarActivo.onclick = onAgregarActivo;
+  const retirarActivo = document.getElementById('gr-guardar');
+  if(retirarActivo) retirarActivo.onclick = onRetirarActivo;
+
   const addCatBtn = document.getElementById('add-cat-btn');
   if(addCatBtn) addCatBtn.onclick = onAgregarCategoria;
 
@@ -1518,6 +1590,89 @@ function renderContentOnly(){
       campoRestaurado.focus({preventScroll:true});
       campoRestaurado.setSelectionRange(inicioCursor, finCursor);
     }
+  }
+}
+
+async function onAgregarActivo(){
+  const nombre=document.getElementById('ga-nombre')?.value.trim();
+  if(!nombre){ showToast("Escribe el nombre del activo"); return; }
+  const valor=id=>document.getElementById(id)?.value.trim()||null;
+  const numero=id=>{const v=valor(id);return v===null?null:Number(v);};
+  const payload={
+    codigo:valor('ga-codigo'),
+    nombre,
+    tipo_activo:document.getElementById('ga-tipo').value,
+    marca:valor('ga-marca'),
+    modelo:valor('ga-modelo'),
+    potencia:valor('ga-potencia'),
+    corriente:numero('ga-corriente'),
+    frame:valor('ga-frame'),
+    tension:numero('ga-tension'),
+    rpm:numero('ga-rpm'),
+    estado:valor('ga-estado'),
+    ubicacion_id:document.getElementById('ga-ubicacion').value||null,
+    observaciones:valor('ga-observaciones')
+  };
+  const btn=document.getElementById('ga-guardar');
+  if(btn){btn.disabled=true;btn.textContent='Guardando...';}
+  if(supabaseClient){
+    try{
+      const {data,error}=await supabaseClient.from('activos').insert([payload]).select().single();
+      if(error) throw error;
+      activos.unshift(data);
+      reconstruirIndiceActivos();
+      state.gestionModo='agregar';
+      showToast("Activo agregado y guardado");
+      render();
+    }catch(e){
+      if(btn){btn.disabled=false;btn.textContent='Guardar activo';}
+      showToast("No se pudo guardar el activo: "+(e.message||"error"));
+    }
+  }else{
+    activos.unshift({id:'demo-'+Date.now(),...payload});
+    reconstruirIndiceActivos();
+    showToast("Activo agregado (modo demo; no se sincroniza)");
+    render();
+  }
+}
+
+async function onRetirarActivo(){
+  const activoId=document.getElementById('gr-activo')?.value;
+  const tipoMotivo=document.getElementById('gr-motivo')?.value;
+  const detalle=document.getElementById('gr-detalle')?.value.trim();
+  const a=activos.find(x=>String(x.id)===String(activoId));
+  if(!a){showToast("Selecciona un activo");return;}
+  if(!tipoMotivo){showToast("Selecciona el motivo del retiro");return;}
+  const labels={maestranza_externa:'Envío a maestranza externa',mantencion:'Retiro por mantención',montaje_bomba:'Montaje en bomba'};
+  const motivo='Retiro: '+labels[tipoMotivo]+(detalle?' — '+detalle:'');
+  const origenId=a.ubicacion_id||null;
+  const payload={activo_id:a.id,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:'retiro',motivo,responsable:currentUser||null};
+  const btn=document.getElementById('gr-guardar');
+  if(btn){btn.disabled=true;btn.textContent='Registrando retiro...';}
+  if(supabaseClient){
+    try{
+      const {error:updateError}=await supabaseClient.from('activos').update({ubicacion_id:null}).eq('id',a.id);
+      if(updateError) throw updateError;
+      const {data,error:movError}=await supabaseClient.from('movimientos').insert([payload]).select().single();
+      if(movError){
+        await supabaseClient.from('activos').update({ubicacion_id:origenId}).eq('id',a.id);
+        throw movError;
+      }
+      a.ubicacion_id=null;
+      movimientos.unshift({...data,fecha:data?.created_at||new Date().toISOString()});
+      reconstruirIndiceActivos();
+      showToast("Retiro registrado y guardado en el historial");
+      render();
+    }catch(e){
+      if(btn){btn.disabled=false;btn.textContent='Confirmar retiro';}
+      showToast("No se pudo registrar el retiro: "+(e.message||"error"));
+    }
+  }else{
+    a.ubicacion_id=null;
+    movimientos.unshift({...payload,id:'demo-mov-'+Date.now(),fecha:new Date().toISOString()});
+    reconstruirIndiceActivos();
+    showToast("Retiro registrado (modo demo; no se sincroniza)");
+    render();
   }
 }
 
