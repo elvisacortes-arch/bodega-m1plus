@@ -1616,8 +1616,17 @@ async function onAgregarActivo(){
   const numero=id=>{const v=valor(id);return v===null?null:Number(v);};
   const responsable=document.getElementById('ga-responsable')?.value.trim();
   if(!responsable){showToast("Ingresa quién registra el activo");return;}
+  const codigoActivo=valor('ga-codigo');
+  const codigoNormalizado=codigoActivo?.normalize('NFKC').trim().toLocaleUpperCase('es-CL')||null;
+  const duplicadoLocal=codigoNormalizado && activos.find(a=>
+    String(a.codigo||'').normalize('NFKC').trim().toLocaleUpperCase('es-CL')===codigoNormalizado
+  );
+  if(duplicadoLocal){
+    showToast("Código duplicado: "+(duplicadoLocal.codigo||codigoActivo)+" ya corresponde a "+(duplicadoLocal.nombre||"otro activo"));
+    return;
+  }
   const payload={
-    codigo:valor('ga-codigo'),nombre,
+    codigo:codigoActivo,nombre,
     tipo_activo:document.getElementById('ga-tipo').value,
     marca:valor('ga-marca'),modelo:valor('ga-modelo'),
     potencia:valor('ga-potencia'),corriente:numero('ga-corriente'),
@@ -1635,6 +1644,14 @@ async function onAgregarActivo(){
   if(supabaseClient){
     let activoCreado=null;
     try{
+      if(payload.codigo){
+        const {data:coincidencia,error:consultaError}=await supabaseClient
+          .from('activos').select('id,codigo,nombre').eq('codigo',payload.codigo).limit(1).maybeSingle();
+        if(consultaError)throw consultaError;
+        if(coincidencia){
+          throw Object.assign(new Error("El código "+coincidencia.codigo+" ya está registrado para "+(coincidencia.nombre||"otro activo")+"."),{code:"DUPLICATE_ASSET_CODE"});
+        }
+      }
       const {data,error}=await supabaseClient.from('activos').insert([payload]).select().single();
       if(error)throw error;
       activoCreado=data;
@@ -1653,7 +1670,10 @@ async function onAgregarActivo(){
       render();
     }catch(e){
       if(btn){btn.disabled=false;btn.textContent='Guardar activo';}
-      showToast("No se pudo completar el alta: "+(e.message||"error"));
+      const duplicado=e.code==="DUPLICATE_ASSET_CODE" || e.code==="23505" || /duplicate key|duplicad/i.test(e.message||"");
+      showToast(duplicado
+        ? "No se guardó: el código ya está registrado. Verifica el código del activo."
+        : "No se pudo completar el alta: "+(e.message||"error"));
     }
   }else{
     const demoActivo={id:'demo-'+Date.now(),...payload};
