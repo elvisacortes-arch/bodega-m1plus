@@ -414,6 +414,10 @@ function filteredItems(){
 // ============================================================
 function render(){
   const root = document.getElementById('root');
+  const campoBusquedaAnterior = document.getElementById('search-activo');
+  const conservarCursor = !!campoBusquedaAnterior && document.activeElement === campoBusquedaAnterior;
+  const inicioCursor = campoBusquedaAnterior?.selectionStart ?? 0;
+  const finCursor = campoBusquedaAnterior?.selectionEnd ?? inicioCursor;
   if(state.screen === "login"){
     root.innerHTML = renderLogin();
     bindLogin();
@@ -428,6 +432,13 @@ function render(){
     ${state.toast ? `<div class="toast">${state.toast}</div>` : ""}
   `;
   bindGlobal();
+  if(conservarCursor){
+    const campoRestaurado = document.getElementById('search-activo');
+    if(campoRestaurado){
+      campoRestaurado.focus({preventScroll:true});
+      campoRestaurado.setSelectionRange(inicioCursor, finCursor);
+    }
+  }
 }
 
 function renderLogin(){
@@ -1435,8 +1446,6 @@ function bindGlobal(){
   const searchActivo = document.getElementById('search-activo');
   if(searchActivo){
     searchActivo.oninput = (e)=>{ programarBusquedaActivos(e.target.value); };
-    searchActivo.focus();
-    searchActivo.selectionStart = searchActivo.selectionEnd = searchActivo.value.length;
   }
   document.querySelectorAll('#chip-activo .chip').forEach(c=>{
     c.onclick = ()=>{ state.filtroActivo = c.dataset.activo; render(); };
@@ -1478,8 +1487,13 @@ function bindGlobal(){
 }
 
 function renderContentOnly(){
-  // Evita perder el foco del input de búsqueda al re-renderizar todo
+  // Conserva foco y selección del buscador cuando se actualiza el contenido.
+  const campoBusquedaAnterior = document.getElementById('search-activo');
+  const conservarCursor = !!campoBusquedaAnterior && document.activeElement === campoBusquedaAnterior;
+  const inicioCursor = campoBusquedaAnterior?.selectionStart ?? 0;
+  const finCursor = campoBusquedaAnterior?.selectionEnd ?? inicioCursor;
   const content = document.getElementById('content');
+  if(!content) return;
   content.innerHTML = renderTab();
   document.querySelectorAll('.chip').forEach(c=>{
     if(c.closest('#chip-tipo')) c.onclick = ()=>{ state.filterTipo = c.dataset.tipo; render(); };
@@ -1498,6 +1512,13 @@ function renderContentOnly(){
   document.querySelectorAll('.item-card[data-activo]').forEach(card=>{
     card.onclick=()=>{ state.activeActivoId=card.dataset.activo; state.sheet='detalle-activo'; render(); };
   });
+  if(conservarCursor){
+    const campoRestaurado = document.getElementById('search-activo');
+    if(campoRestaurado){
+      campoRestaurado.focus({preventScroll:true});
+      campoRestaurado.setSelectionRange(inicioCursor, finCursor);
+    }
+  }
 }
 
 function onGuardarNuevoItem(){
