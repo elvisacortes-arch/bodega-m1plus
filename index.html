@@ -1059,6 +1059,7 @@ function sheetDetalleActivo(){
         <label>Motivo del traslado</label>
         <input id="mover-activo-motivo" placeholder="Ej: Traslado a operación / cambio de patio">
       </div>
+      <div class="field"><label>Responsable del traslado *</label><input id="mover-activo-responsable" value="${currentUser}" placeholder="Nombre de quien realiza el traslado"></div>
       <button class="btn btn-primary" id="mover-activo-btn">Registrar movimiento</button>
     </div>
 
@@ -1099,6 +1100,7 @@ async function onMoverActivo(){
 
   const destinoId = destinoSelect.value || null;
   const motivo = motivoInput.value.trim();
+  const responsable = document.getElementById('mover-activo-responsable')?.value.trim();
 
   if(!destinoId){
     showToast("Selecciona una nueva posición");
@@ -1110,6 +1112,10 @@ async function onMoverActivo(){
   }
   if(!motivo){
     showToast("Ingresa el motivo del traslado");
+    return;
+  }
+  if(!responsable){
+    showToast("Ingresa quién realiza el traslado");
     return;
   }
   if(!supabaseClient){
@@ -1140,7 +1146,7 @@ async function onMoverActivo(){
       ubicacion_destino_id: destinoId,
       tipo_movimiento: 'traslado',
       motivo,
-      responsable: currentUser || null
+      responsable
     };
 
     const { data: movData, error: movError } = await supabaseClient
@@ -1270,6 +1276,7 @@ function renderConteoTab(){
         <div class="gestion-title">Ingreso de un activo</div>
         <div class="gestion-help">El código es opcional si todavía está en creación. Asigna una posición si ya está disponible.</div>
         <div class="field"><label>Nombre del activo *</label><input id="ga-nombre" placeholder="Ej: Motor eléctrico unidad 4"></div>
+        <div class="field"><label>Responsable del ingreso *</label><input id="ga-responsable" value="${currentUser}" placeholder="Nombre de quien registra el activo"></div>
         <div class="field-row">
           <div class="field"><label>Tipo *</label><select id="ga-tipo">
             <option value="motor">Motor</option><option value="bomba">Bomba</option><option value="cpr">CPR</option><option value="vdf">VDF</option>
@@ -1288,6 +1295,7 @@ function renderConteoTab(){
       <div class="gestion-panel retirar">
         <div class="gestion-title">Retirar activo</div>
         <div class="gestion-help">Selecciona el activo y la razón de salida. El activo se conserva en el sistema y queda marcado fuera de bodega.</div>
+        <div class="field"><label>Responsable del retiro *</label><input id="gr-responsable" value="${currentUser}" placeholder="Nombre de quien realiza el retiro"></div>
         <div class="field"><label>Activo *</label><select id="gr-activo">
           <option value="">— Selecciona un activo disponible —</option>
           ${activosOpciones.map(a=>`<option value="${a.id}">${a.codigo||'Sin código'} · ${a.nombre||'Activo'} · ${a.modelo||a.tipo_activo||''}</option>`).join('')}
@@ -1603,43 +1611,56 @@ function renderContentOnly(){
 
 async function onAgregarActivo(){
   const nombre=document.getElementById('ga-nombre')?.value.trim();
-  if(!nombre){ showToast("Escribe el nombre del activo"); return; }
+  if(!nombre){showToast("Escribe el nombre del activo");return;}
   const valor=id=>document.getElementById(id)?.value.trim()||null;
   const numero=id=>{const v=valor(id);return v===null?null:Number(v);};
+  const responsable=document.getElementById('ga-responsable')?.value.trim();
+  if(!responsable){showToast("Ingresa quién registra el activo");return;}
   const payload={
-    codigo:valor('ga-codigo'),
-    nombre,
+    codigo:valor('ga-codigo'),nombre,
     tipo_activo:document.getElementById('ga-tipo').value,
-    marca:valor('ga-marca'),
-    modelo:valor('ga-modelo'),
-    potencia:valor('ga-potencia'),
-    corriente:numero('ga-corriente'),
-    frame:valor('ga-frame'),
-    tension:numero('ga-tension'),
-    rpm:numero('ga-rpm'),
+    marca:valor('ga-marca'),modelo:valor('ga-modelo'),
+    potencia:valor('ga-potencia'),corriente:numero('ga-corriente'),
+    frame:valor('ga-frame'),tension:numero('ga-tension'),rpm:numero('ga-rpm'),
     estado:valor('ga-estado'),
     ubicacion_id:document.getElementById('ga-ubicacion').value||null,
     observaciones:valor('ga-observaciones')
   };
+  const movPayload={
+    activo_id:null,ubicacion_origen_id:null,ubicacion_destino_id:payload.ubicacion_id,
+    tipo_movimiento:'ingreso',motivo:'Alta manual de activo',responsable
+  };
   const btn=document.getElementById('ga-guardar');
   if(btn){btn.disabled=true;btn.textContent='Guardando...';}
   if(supabaseClient){
+    let activoCreado=null;
     try{
       const {data,error}=await supabaseClient.from('activos').insert([payload]).select().single();
-      if(error) throw error;
+      if(error)throw error;
+      activoCreado=data;
+      const movFinal={...movPayload,activo_id:data.id};
+      const {data:movData,error:movError}=await supabaseClient.from('movimientos').insert([movFinal]).select().single();
+      if(movError){
+        const {error:rollbackError}=await supabaseClient.from('activos').delete().eq('id',data.id);
+        throw new Error(rollbackError
+          ? 'Activo creado pero no se pudo registrar el ingreso ni revertirlo: '+movError.message
+          : 'No se guardó el movimiento de ingreso; se revirtió el alta. '+movError.message);
+      }
       activos.unshift(data);
+      movimientos.unshift({...movData,fecha:movData?.created_at||new Date().toISOString()});
       reconstruirIndiceActivos();
-      state.gestionModo='agregar';
-      showToast("Activo agregado y guardado");
+      showToast("Alta registrada en Historial a nombre de "+responsable);
       render();
     }catch(e){
       if(btn){btn.disabled=false;btn.textContent='Guardar activo';}
-      showToast("No se pudo guardar el activo: "+(e.message||"error"));
+      showToast("No se pudo completar el alta: "+(e.message||"error"));
     }
   }else{
-    activos.unshift({id:'demo-'+Date.now(),...payload});
+    const demoActivo={id:'demo-'+Date.now(),...payload};
+    activos.unshift(demoActivo);
+    movimientos.unshift({...movPayload,activo_id:demoActivo.id,id:'demo-mov-'+Date.now(),fecha:new Date().toISOString()});
     reconstruirIndiceActivos();
-    showToast("Activo agregado (modo demo; no se sincroniza)");
+    showToast("Alta registrada en Historial (modo demo)");
     render();
   }
 }
@@ -1648,13 +1669,15 @@ async function onRetirarActivo(){
   const activoId=document.getElementById('gr-activo')?.value;
   const tipoMotivo=document.getElementById('gr-motivo')?.value;
   const detalle=document.getElementById('gr-detalle')?.value.trim();
+  const responsable=document.getElementById('gr-responsable')?.value.trim();
   const a=activos.find(x=>String(x.id)===String(activoId));
   if(!a){showToast("Selecciona un activo");return;}
   if(!tipoMotivo){showToast("Selecciona el motivo del retiro");return;}
+  if(!responsable){showToast("Ingresa quién realiza el retiro");return;}
   const labels={maestranza_externa:'Envío a maestranza externa',mantencion:'Retiro por mantención',montaje_bomba:'Montaje en bomba'};
   const motivo='Retiro: '+labels[tipoMotivo]+(detalle?' — '+detalle:'');
   const origenId=a.ubicacion_id||null;
-  const payload={activo_id:a.id,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:'retiro',motivo,responsable:currentUser||null};
+  const payload={activo_id:a.id,ubicacion_origen_id:origenId,ubicacion_destino_id:null,tipo_movimiento:'retiro',motivo,responsable};
   const btn=document.getElementById('gr-guardar');
   if(btn){btn.disabled=true;btn.textContent='Registrando retiro...';}
   if(supabaseClient){
