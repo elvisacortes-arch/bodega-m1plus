@@ -1670,10 +1670,13 @@ async function onAgregarActivo(){
       render();
     }catch(e){
       if(btn){btn.disabled=false;btn.textContent='Guardar activo';}
-      const duplicado=e.code==="DUPLICATE_ASSET_CODE" || e.code==="23505" || /duplicate key|duplicad/i.test(e.message||"");
-      showToast(duplicado
-        ? "No se guardó: el código ya está registrado. Verifica el código del activo."
-        : "No se pudo completar el alta: "+(e.message||"error"));
+      if(e.code==="DUPLICATE_ASSET_CODE"){
+        showToast(e.message||"El código de ese activo ya está registrado.");
+      }else{
+        const detalle=[e.message,e.details,e.hint].filter(Boolean).join(" · ");
+        const codigoError=e.code ? " ["+e.code+"]" : "";
+        showToast("No se pudo completar el alta"+codigoError+": "+(detalle||"error sin detalle"));
+      }
     }
   }else{
     const demoActivo={id:'demo-'+Date.now(),...payload};
