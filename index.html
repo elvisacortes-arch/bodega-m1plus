@@ -101,6 +101,8 @@
     font-weight:500;
   }
   .chip.active{background:var(--accent); border-color:var(--accent); color:#1a1108;}
+  .chip-count{display:inline-block; min-width:19px; margin-left:5px; padding:2px 6px; border-radius:10px; background:var(--surface-2); color:var(--text); font-family:var(--mono); font-size:10px; font-weight:700; text-align:center;}
+  .chip.active .chip-count{background:#1a1108; color:var(--accent);}
 
   /* ---------- Item card (ficha de bodega) ---------- */
   .item-card{
@@ -774,6 +776,9 @@ function renderActivos(){
   const bombas = activos.filter(a=>a.tipo_activo==='bomba').length;
   const vdfs = activos.filter(a=>a.tipo_activo==='vdf').length;
   const cprs = activos.filter(a=>a.tipo_activo==='cpr').length;
+  const nombresTipo = {motor:'Motores', bomba:'Bombas', cpr:'CPR', vdf:'VDF'};
+  const tipoSeleccionado = nombresTipo[state.filtroActivo] || 'Activos';
+
   return `
     <div class="stats-grid">
       <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Activos totales</div></div>
@@ -786,12 +791,18 @@ function renderActivos(){
       <div class="search-box"><span>🔍</span><input id="search-activo" placeholder="Buscar activo, marca, modelo..." value="${state.searchActivo}" /></div>
     </div>
     <div class="chip-row" id="chip-activo">
-      <div class="chip ${state.filtroActivo==='todos'?'active':''}" data-activo="todos">Todos</div>
-      <div class="chip ${state.filtroActivo==='motor'?'active':''}" data-activo="motor">⚙️ Motores</div>
-      <div class="chip ${state.filtroActivo==='bomba'?'active':''}" data-activo="bomba">💧 Bombas</div>
-      <div class="chip ${state.filtroActivo==='vdf'?'active':''}" data-activo="vdf">🔌 VDF</div>
-      <div class="chip ${state.filtroActivo==='cpr'?'active':''}" data-activo="cpr">🔩 CPR</div>
+      <div class="chip ${state.filtroActivo==='todos'?'active':''}" data-activo="todos">Todos <span class="chip-count">${activos.length}</span></div>
+      <div class="chip ${state.filtroActivo==='motor'?'active':''}" data-activo="motor">⚙️ Motores <span class="chip-count">${motores}</span></div>
+      <div class="chip ${state.filtroActivo==='bomba'?'active':''}" data-activo="bomba">💧 Bombas <span class="chip-count">${bombas}</span></div>
+      <div class="chip ${state.filtroActivo==='cpr'?'active':''}" data-activo="cpr">🔩 CPR <span class="chip-count">${cprs}</span></div>
+      <div class="chip ${state.filtroActivo==='vdf'?'active':''}" data-activo="vdf">🔌 VDF <span class="chip-count">${vdfs}</span></div>
     </div>
+    ${state.filtroActivo!=='todos' ? `
+      <div class="stat-card" style="margin:0 0 14px;">
+        <div class="num">${list.length}</div>
+        <div class="label">${tipoSeleccionado} encontrados</div>
+      </div>
+    ` : ''}
     ${list.length===0 ? `<div class="empty-state"><div class="icon">⚙️</div><div class="title">No se encontraron activos</div><div class="sub">Ajusta la búsqueda o selecciona otra subdivisión.</div></div>` : list.map(a=>renderActivoCard(a)).join('')}
   `;
 }
