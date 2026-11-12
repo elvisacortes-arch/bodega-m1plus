@@ -660,12 +660,20 @@ function patiosActivos(){
 }
 function zonasDePatio(patioId){
   if(!patioId) return [];
+  const patio=ubicaciones.find(u=>String(u.id)===String(patioId));
+  if(!patio) return [];
   const descendientes=ubicacionesDescendientes(patioId);
+  const codigoPatio=String(patio.codigo||'').toUpperCase();
+  const permitidas=codigoPatio==='PATIO-02'
+    ? new Set(['P2-CPR-Z1','P2-CPR-Z2','P2-CPR-Z3','P2-CPR-Z4','P2-CPR-Z5'])
+    : codigoPatio==='PATIO-03'
+      ? new Set(['P3-MOTOR-Z1','P3-MOTOR-Z2','P3-MOTOR-Z3'])
+      : null;
   return ubicaciones.filter(u=>{
     if(String(u.id)===String(patioId) || !descendientes.has(String(u.id))) return false;
-    const nivel=String(u.nivel||'').toLowerCase();
     const codigo=String(u.codigo||'').toUpperCase();
-    return nivel==='zona' || /^P2-CPR-Z[1-5]$/.test(codigo);
+    if(permitidas) return permitidas.has(codigo);
+    return String(u.nivel||'').toLowerCase()==='zona';
   }).sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||'',undefined,{numeric:true}));
 }
 function patiosPermitidosParaActivo(tipo){
@@ -687,13 +695,20 @@ function patioPredeterminadoActivo(tipo){
 }
 function ubicacionesAsignablesActivo(tipo,ubicacionActualId=null){
   const idsPermitidos=new Set();
-  patiosPermitidosParaActivo(tipo).forEach(p=>ubicacionesDescendientes(p.id).forEach(id=>idsPermitidos.add(id)));
+  const patios=patiosPermitidosParaActivo(tipo);
+  patios.forEach(p=>ubicacionesDescendientes(p.id).forEach(id=>idsPermitidos.add(id)));
+  if(tipo==='motor' || tipo==='cpr'){
+    const codigoPatio=tipo==='motor'?'PATIO-03':'PATIO-02';
+    const patio=patios.find(p=>p.codigo===codigoPatio);
+    if(patio){
+      idsPermitidos.clear();
+      idsPermitidos.add(String(patio.id));
+      zonasDePatio(patio.id).forEach(z=>ubicacionesDescendientes(z.id).forEach(id=>idsPermitidos.add(id)));
+    }
+  }
   const candidatas=ubicaciones.filter(u=>{
     if(!idsPermitidos.has(String(u.id))) return false;
-    const codigo=String(u.codigo||'').toUpperCase();
-    if(tipo==='motor' && /^Z3-[EFGH]$/.test(codigo)) return false;
-    return u.nivel==='patio' || u.nivel==='zona' || u.nivel==='posicion' ||
-      /^P2-CPR-Z[1-5]$/.test(codigo);
+    return u.nivel==='patio' || u.nivel==='zona' || u.nivel==='posicion';
   });
   if(ubicacionActualId && !candidatas.some(u=>String(u.id)===String(ubicacionActualId))){
     const actual=ubicaciones.find(u=>String(u.id)===String(ubicacionActualId));
