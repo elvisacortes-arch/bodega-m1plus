@@ -685,6 +685,21 @@ function patioPredeterminadoActivo(tipo){
   const codigo=tipo==='motor'?'PATIO-03':tipo==='cpr'?'PATIO-02':null;
   return patios.find(u=>u.codigo===codigo)?.id || patios[0]?.id || '';
 }
+function ubicacionesAsignablesActivo(tipo,ubicacionActualId=null){
+  const idsPermitidos=new Set();
+  patiosPermitidosParaActivo(tipo).forEach(p=>ubicacionesDescendientes(p.id).forEach(id=>idsPermitidos.add(id)));
+  const candidatas=ubicaciones.filter(u=>{
+    if(!idsPermitidos.has(String(u.id))) return false;
+    const codigo=String(u.codigo||'').toUpperCase();
+    return u.nivel==='patio' || u.nivel==='zona' || u.nivel==='posicion' ||
+      /^P2-CPR-Z[1-5]$/.test(codigo) || /^Z3-[EFGH]$/.test(codigo);
+  });
+  if(ubicacionActualId && !candidatas.some(u=>String(u.id)===String(ubicacionActualId))){
+    const actual=ubicaciones.find(u=>String(u.id)===String(ubicacionActualId));
+    if(actual) candidatas.push(actual);
+  }
+  return candidatas.sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||'',undefined,{numeric:true}));
+}
 function actualizarZonasGestion(patioId,zonaSeleccionada=''){
   const select=document.getElementById('ga-zona');
   if(!select) return;
@@ -1122,8 +1137,8 @@ function sheetDetalleActivo(){
       <div class="item-meta" style="margin-bottom:8px;">${a.ubicacion_id ? '🧭 ' + ubicacionRuta(a.ubicacion_id) : '📍 Sin ubicación asignada'}</div>
       <select id="activo-ubicacion">
         <option value="">— Sin ubicación —</option>
-        ${ubicaciones
-          .filter(u=>u.nivel==='posicion' || u.codigo==='PATIO-03')
+        ${ubicacionesAsignablesActivo(a.tipo_activo,a.ubicacion_id)
+          .filter(u=>u.nivel==='posicion' || u.nivel==='zona' || u.nivel==='patio' || /^P2-CPR-Z[1-5]$/.test(u.codigo||'') || /^Z3-[EFGH]$/.test(u.codigo||''))
           .slice()
           .sort((x,y)=>(x.codigo||'').localeCompare(y.codigo||''))
           .map(u=>`
@@ -1144,8 +1159,8 @@ function sheetDetalleActivo(){
         <label>Nueva posición</label>
         <select id="mover-activo-destino">
           <option value="">— Selecciona una posición —</option>
-          ${ubicaciones
-            .filter(u=>u.nivel==='posicion' || u.codigo==='PATIO-03')
+          ${ubicacionesAsignablesActivo(a.tipo_activo)
+            .filter(u=>u.nivel==='posicion' || u.nivel==='zona' || u.nivel==='patio' || /^P2-CPR-Z[1-5]$/.test(u.codigo||'') || /^Z3-[EFGH]$/.test(u.codigo||''))
             .slice()
             .sort((x,y)=>(x.codigo||'').localeCompare(y.codigo||''))
             .map(u=>`
@@ -1216,6 +1231,10 @@ async function onMoverActivo(){
   }
   if(!responsable){
     showToast("Ingresa quién realiza el traslado");
+    return;
+  }
+  if(!ubicacionesAsignablesActivo(a.tipo_activo).some(u=>String(u.id)===String(destinoId))){
+    showToast(a.tipo_activo==='motor' ? "Los motores solo se pueden trasladar dentro del Patio 3" : "El destino no corresponde al tipo de activo");
     return;
   }
   if(!supabaseClient){
@@ -1290,6 +1309,10 @@ async function onGuardarUbicacionActivo(){
 
   const ubicacionId = select.value || null;
 
+  if(ubicacionId && !ubicacionesAsignablesActivo(a.tipo_activo).some(u=>String(u.id)===String(ubicacionId))){
+    showToast(a.tipo_activo==='motor' ? "Los motores solo se pueden ubicar en Patio 3" : "La ubicación no corresponde al tipo de activo");
+    return;
+  }
   if(!supabaseClient){
     showToast("Sin conexión a Supabase");
     return;
