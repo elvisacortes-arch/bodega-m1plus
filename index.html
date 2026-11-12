@@ -900,14 +900,17 @@ function activoRetirado(a){
 }
 
 function renderActivos(){
-  const motores = activos.filter(a=>a.tipo_activo==='motor').length;
-  const bombas = activos.filter(a=>a.tipo_activo==='bomba').length;
-  const vdfs = activos.filter(a=>a.tipo_activo==='vdf').length;
-  const cprs = activos.filter(a=>a.tipo_activo==='cpr').length;
+  const enBodega = activos.filter(a=>!activoRetirado(a));
+  const motores = enBodega.filter(a=>a.tipo_activo==='motor').length;
+  const bombas = enBodega.filter(a=>a.tipo_activo==='bomba').length;
+  const vdfs = enBodega.filter(a=>a.tipo_activo==='vdf').length;
+  const cprs = enBodega.filter(a=>a.tipo_activo==='cpr').length;
+  const retirados = activos.length-enBodega.length;
 
   return `
     <div class="stats-grid">
-      <div class="stat-card"><div class="num">${activos.length}</div><div class="label">Activos totales</div></div>
+      <div class="stat-card"><div class="num">${enBodega.length}</div><div class="label">Activos en bodega</div></div>
+      <div class="stat-card crit"><div class="num">${retirados}</div><div class="label">Fuera de bodega</div></div>
       <div class="stat-card ok"><div class="num">${motores}</div><div class="label">Motores</div></div>
       <div class="stat-card"><div class="num">${bombas}</div><div class="label">Bombas</div></div>
       <div class="stat-card warn"><div class="num">${vdfs}</div><div class="label">VDF</div></div>
@@ -917,7 +920,7 @@ function renderActivos(){
       <div class="search-box"><span>🔍</span><input id="search-activo" placeholder="Búsqueda rápida por código, activo, modelo o ubicación..." value="${state.searchActivo}" /></div>
     </div>
     <div class="chip-row" id="chip-activo">
-      <div class="chip ${state.filtroActivo==='todos'?'active':''}" data-activo="todos">Todos <span class="chip-count">${activos.length}</span></div>
+      <div class="chip ${state.filtroActivo==='todos'?'active':''}" data-activo="todos">Todos <span class="chip-count">${enBodega.length}</span></div>
       <div class="chip ${state.filtroActivo==='motor'?'active':''}" data-activo="motor">⚙️ Motores <span class="chip-count">${motores}</span></div>
       <div class="chip ${state.filtroActivo==='bomba'?'active':''}" data-activo="bomba">💧 Bombas <span class="chip-count">${bombas}</span></div>
       <div class="chip ${state.filtroActivo==='cpr'?'active':''}" data-activo="cpr">🔩 CPR <span class="chip-count">${cprs}</span></div>
