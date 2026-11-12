@@ -373,6 +373,11 @@ let state = {
   toast: null,
   filtroActivo: "todos",
   searchActivo: "",
+  filtroActivoPatio: "",
+  filtroActivoZona: "",
+  gestionTipo: "motor",
+  gestionPatio: "",
+  gestionZona: "",
   stockPatio: "",
   stockSector: "",
   stockZona: "",
@@ -649,6 +654,45 @@ function ubicacionesDescendientes(id){
   }
   return ids;
 }
+function patiosActivos(){
+  return ubicaciones.filter(u=>u.nivel==='patio' || /^PATIO-/.test(u.codigo||''))
+    .slice().sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||''));
+}
+function zonasDePatio(patioId){
+  if(!patioId) return [];
+  const descendientes=ubicacionesDescendientes(patioId);
+  return ubicaciones.filter(u=>{
+    if(String(u.id)===String(patioId) || !descendientes.has(String(u.id))) return false;
+    const nivel=String(u.nivel||'').toLowerCase();
+    const codigo=String(u.codigo||'').toUpperCase();
+    return nivel==='zona' || /^P2-CPR-Z[1-5]$/.test(codigo) || /^Z3-[EFGH]$/.test(codigo);
+  }).sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||'',undefined,{numeric:true}));
+}
+function patiosPermitidosParaActivo(tipo){
+  const patios=patiosActivos();
+  if(tipo==='motor'){
+    const patio=patios.find(u=>u.codigo==='PATIO-03');
+    return patio ? [patio] : patios;
+  }
+  if(tipo==='cpr'){
+    const patio=patios.find(u=>u.codigo==='PATIO-02');
+    return patio ? [patio] : patios;
+  }
+  return patios.filter(u=>u.codigo!=='PATIO-01');
+}
+function patioPredeterminadoActivo(tipo){
+  const patios=patiosPermitidosParaActivo(tipo);
+  const codigo=tipo==='motor'?'PATIO-03':tipo==='cpr'?'PATIO-02':null;
+  return patios.find(u=>u.codigo===codigo)?.id || patios[0]?.id || '';
+}
+function activoEnPatio(a,patioId){
+  if(!a?.ubicacion_id || !patioId) return false;
+  return ubicacionesDescendientes(patioId).has(String(a.ubicacion_id));
+}
+function activoEnZona(a,zonaId){
+  if(!a?.ubicacion_id || !zonaId) return false;
+  return ubicacionesDescendientes(zonaId).has(String(a.ubicacion_id));
+}
 function activosEnUbicacion(id){
   if(!id) return [];
   const ids=ubicacionesDescendientes(id);
@@ -881,6 +925,8 @@ let temporizadorBusquedaActivos = null;
 
 function renderResultadosActivos(){
   let list = buscarActivosIndexados(state.searchActivo);
+  if(state.filtroActivoPatio) list=list.filter(a=>activoEnPatio(a,state.filtroActivoPatio));
+  if(state.filtroActivoZona) list=list.filter(a=>activoEnZona(a,state.filtroActivoZona));
   if(state.filtroActivo !== "todos") list = list.filter(a=>a.tipo_activo===state.filtroActivo);
   const nombresTipo = {motor:'Motores', bomba:'Bombas', cpr:'CPR', vdf:'VDF'};
   const tipoSeleccionado = nombresTipo[state.filtroActivo] || 'Activos';
@@ -937,6 +983,22 @@ function renderActivos(){
       <div class="stat-card warn"><div class="num">${vdfs}</div><div class="label">VDF</div></div>
       <div class="stat-card"><div class="num">${cprs}</div><div class="label">CPR</div></div>
     </div>
+    <div class="field">
+      <label>1. Patio</label>
+      <select id="activos-patio">
+        <option value="">Todos los patios</option>
+        ${patiosActivos().map(p=>`<option value="${p.id}" ${String(state.filtroActivoPatio)===String(p.id)?'selected':''}>${etiquetaPatio(p)}</option>`).join('')}
+      </select>
+    </div>
+    ${state.filtroActivoPatio ? `
+      <div class="field">
+        <label>2. Zona</label>
+        <select id="activos-zona">
+          <option value="">Todas las zonas del patio</option>
+          ${zonasDePatio(state.filtroActivoPatio).map(z=>`<option value="${z.id}" ${String(state.filtroActivoZona)===String(z.id)?'selected':''}>${z.codigo} — ${z.descripcion}</option>`).join('')}
+        </select>
+      </div>
+    ` : ''}
     <div class="search-row">
       <div class="search-box"><span>🔍</span><input id="search-activo" placeholder="Búsqueda rápida por código, activo, modelo o ubicación..." value="${state.searchActivo}" /></div>
     </div>
@@ -1274,7 +1336,13 @@ function renderCategorias(){
 function renderConteoTab(){
   const disponibles = activos.filter(a=>!activoRetirado(a));
   const modo = state.gestionModo || 'agregar';
-  const posiciones = ubicaciones.filter(u=>u.nivel==='posicion' || u.codigo==='PATIO-03').slice().sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||''));
+  const tipoIngreso=state.gestionTipo||'motor';
+  const patiosIngreso=patiosPermitidosParaActivo(tipoIngreso);
+  const patioIngresoId=patiosIngreso.some(p=>String(p.id)===String(state.gestionPatio))
+    ? state.gestionPatio : patioPredeterminadoActivo(tipoIngreso);
+  const zonasIngreso=zonasDePatio(patioIngresoId);
+  const zonaIngresoId=zonasIngreso.some(z=>String(z.id)===String(state.gestionZona))
+    ? state.gestionZona : '';
   const activosOpciones = disponibles.slice().sort((a,b)=>(a.codigo||a.nombre||'').localeCompare(b.codigo||b.nombre||''));
   return `
     <div style="font-size:19px;font-weight:700;">Gestión de activos</div>
@@ -1295,7 +1363,7 @@ function renderConteoTab(){
         <div class="field"><label>Responsable del ingreso *</label><input id="ga-responsable" value="${currentUser}" placeholder="Nombre de quien registra el activo"></div>
         <div class="field-row">
           <div class="field"><label>Tipo *</label><select id="ga-tipo">
-            <option value="motor">Motor</option><option value="bomba">Bomba</option><option value="cpr">CPR</option><option value="vdf">VDF</option>
+            <option value="motor" ${tipoIngreso==='motor'?'selected':''}>Motor</option><option value="bomba" ${tipoIngreso==='bomba'?'selected':''}>Bomba</option><option value="cpr" ${tipoIngreso==='cpr'?'selected':''}>CPR</option><option value="vdf" ${tipoIngreso==='vdf'?'selected':''}>VDF</option>
           </select></div>
           <div class="field"><label>Código</label><input id="ga-codigo" placeholder="Pendiente / código"></div>
         </div>
@@ -1303,7 +1371,14 @@ function renderConteoTab(){
         <div class="field-row"><div class="field"><label>Potencia</label><input id="ga-potencia" placeholder="Ej: 75 HP"></div><div class="field"><label>Corriente (A)</label><input id="ga-corriente" type="number" step="any" placeholder="A"></div></div>
         <div class="field-row"><div class="field"><label>Frame</label><input id="ga-frame" placeholder="Frame"></div><div class="field"><label>Tensión (V)</label><input id="ga-tension" type="number" step="any" placeholder="V"></div></div>
         <div class="field-row"><div class="field"><label>RPM</label><input id="ga-rpm" type="number" step="any" placeholder="RPM"></div><div class="field"><label>Estado</label><select id="ga-estado"><option value="">Sin especificar</option><option>NUEVO</option><option>REPARADO</option><option>REPARABLE</option><option>POR CONFIRMAR</option></select></div></div>
-        <div class="field"><label>Ubicación / posición</label><select id="ga-ubicacion"><option value="">— Sin ubicación —</option>${posiciones.map(u=>`<option value="${u.id}">${u.codigo} — ${u.descripcion}</option>`).join('')}</select></div>
+        <div class="field"><label>1. Patio</label><select id="ga-patio">
+          <option value="">— Selecciona un patio —</option>
+          ${patiosIngreso.map(p=>`<option value="${p.id}" ${String(patioIngresoId)===String(p.id)?'selected':''}>${etiquetaPatio(p)}</option>`).join('')}
+        </select></div>
+        <div class="field"><label>2. Zona</label><select id="ga-zona" ${zonasIngreso.length?'':'disabled'}>
+          <option value="">${zonasIngreso.length?'— Patio completo / sin zona específica —':'Este patio no tiene zonas registradas'}</option>
+          ${zonasIngreso.map(z=>`<option value="${z.id}" ${String(zonaIngresoId)===String(z.id)?'selected':''}>${z.codigo} — ${z.descripcion}</option>`).join('')}
+        </select></div>
         <div class="field"><label>Observaciones</label><textarea id="ga-observaciones" rows="2" placeholder="Información adicional"></textarea></div>
         <button class="btn btn-primary" id="ga-guardar">Guardar activo</button>
       </div>
@@ -1570,6 +1645,32 @@ function bindGlobal(){
   document.querySelectorAll('[data-gestion-mode]').forEach(btn=>{
     btn.onclick=()=>{ state.gestionModo=btn.dataset.gestionMode; render(); };
   });
+  const filtroPatioActivos=document.getElementById('activos-patio');
+  if(filtroPatioActivos) filtroPatioActivos.onchange=e=>{
+    state.filtroActivoPatio=e.target.value;
+    state.filtroActivoZona='';
+    render();
+  };
+  const filtroZonaActivos=document.getElementById('activos-zona');
+  if(filtroZonaActivos) filtroZonaActivos.onchange=e=>{
+    state.filtroActivoZona=e.target.value;
+    render();
+  };
+  const tipoIngreso=document.getElementById('ga-tipo');
+  if(tipoIngreso) tipoIngreso.onchange=e=>{
+    state.gestionTipo=e.target.value;
+    state.gestionPatio=patioPredeterminadoActivo(e.target.value);
+    state.gestionZona='';
+    render();
+  };
+  const patioIngreso=document.getElementById('ga-patio');
+  if(patioIngreso) patioIngreso.onchange=e=>{
+    state.gestionPatio=e.target.value;
+    state.gestionZona='';
+    render();
+  };
+  const zonaIngreso=document.getElementById('ga-zona');
+  if(zonaIngreso) zonaIngreso.onchange=e=>{state.gestionZona=e.target.value;};
   const guardarActivo = document.getElementById('ga-guardar');
   if(guardarActivo) guardarActivo.onclick = onAgregarActivo;
   const retirarActivo = document.getElementById('gr-guardar');
@@ -1649,7 +1750,7 @@ async function onAgregarActivo(){
     potencia:valor('ga-potencia'),corriente:numero('ga-corriente'),
     frame:valor('ga-frame'),tension:numero('ga-tension'),rpm:numero('ga-rpm'),
     estado:valor('ga-estado'),
-    ubicacion_id:document.getElementById('ga-ubicacion').value||null,
+    ubicacion_id:document.getElementById('ga-zona').value || document.getElementById('ga-patio').value || null,
     observaciones:valor('ga-observaciones')
   };
   const movPayload={
