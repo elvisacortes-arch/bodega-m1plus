@@ -664,11 +664,13 @@ function zonasDePatio(patioId){
   if(!patio) return [];
   const descendientes=ubicacionesDescendientes(patioId);
   const codigoPatio=String(patio.codigo||'').toUpperCase();
-  const permitidas=codigoPatio==='PATIO-02'
-    ? new Set(['P2-CPR-Z1','P2-CPR-Z2','P2-CPR-Z3','P2-CPR-Z4','P2-CPR-Z5'])
-    : codigoPatio==='PATIO-03'
-      ? new Set(['P3-MOTOR-Z1','P3-MOTOR-Z2','P3-MOTOR-Z3'])
-      : null;
+  const permitidas=codigoPatio==='PATIO-01'
+    ? new Set(['P1-Z1-VARIADORES','P1-Z2-REP-ELECTRICA','P1-Z3-REP-MECANICA','P1-Z4-INSUMOS'])
+    : codigoPatio==='PATIO-02'
+      ? new Set(['P2-CPR-Z1','P2-CPR-Z2','P2-CPR-Z3','P2-CPR-Z4','P2-CPR-Z5'])
+      : codigoPatio==='PATIO-03'
+        ? new Set(['P3-MOTOR-Z1','P3-MOTOR-Z2','P3-MOTOR-Z3'])
+        : null;
   return ubicaciones.filter(u=>{
     if(String(u.id)===String(patioId) || !descendientes.has(String(u.id))) return false;
     const codigo=String(u.codigo||'').toUpperCase();
@@ -678,6 +680,10 @@ function zonasDePatio(patioId){
 }
 function patiosPermitidosParaActivo(tipo){
   const patios=patiosActivos();
+  if(tipo==='vdf'){
+    const patio=patios.find(u=>u.codigo==='PATIO-01');
+    return patio ? [patio] : patios;
+  }
   if(tipo==='motor'){
     const patio=patios.find(u=>u.codigo==='PATIO-03');
     return patio ? [patio] : patios;
@@ -690,20 +696,22 @@ function patiosPermitidosParaActivo(tipo){
 }
 function patioPredeterminadoActivo(tipo){
   const patios=patiosPermitidosParaActivo(tipo);
-  const codigo=tipo==='motor'?'PATIO-03':tipo==='cpr'?'PATIO-02':null;
+  const codigo=tipo==='motor'?'PATIO-03':tipo==='cpr'?'PATIO-02':tipo==='vdf'?'PATIO-01':null;
   return patios.find(u=>u.codigo===codigo)?.id || patios[0]?.id || '';
 }
 function ubicacionesAsignablesActivo(tipo,ubicacionActualId=null){
   const idsPermitidos=new Set();
   const patios=patiosPermitidosParaActivo(tipo);
   patios.forEach(p=>ubicacionesDescendientes(p.id).forEach(id=>idsPermitidos.add(id)));
-  if(tipo==='motor' || tipo==='cpr'){
-    const codigoPatio=tipo==='motor'?'PATIO-03':'PATIO-02';
+  if(tipo==='motor' || tipo==='cpr' || tipo==='vdf'){
+    const codigoPatio=tipo==='motor'?'PATIO-03':tipo==='cpr'?'PATIO-02':'PATIO-01';
     const patio=patios.find(p=>p.codigo===codigoPatio);
     if(patio){
       idsPermitidos.clear();
       idsPermitidos.add(String(patio.id));
-      zonasDePatio(patio.id).forEach(z=>ubicacionesDescendientes(z.id).forEach(id=>idsPermitidos.add(id)));
+      zonasDePatio(patio.id)
+        .filter(z=>tipo!=='vdf' || z.codigo==='P1-Z1-VARIADORES')
+        .forEach(z=>ubicacionesDescendientes(z.id).forEach(id=>idsPermitidos.add(id)));
     }
   }
   const candidatas=ubicaciones.filter(u=>{
@@ -735,8 +743,9 @@ function actualizarPatiosGestion(tipo,patioSeleccionado=''){
     patios.map(p=>`<option value="${p.id}">${etiquetaPatio(p)}</option>`).join('');
   select.value=elegido;
   state.gestionPatio=elegido;
-  state.gestionZona='';
-  actualizarZonasGestion(elegido,'');
+  const zonaVdf=tipo==='vdf' ? zonasDePatio(elegido).find(z=>z.codigo==='P1-Z1-VARIADORES')?.id||'' : '';
+  state.gestionZona=zonaVdf;
+  actualizarZonasGestion(elegido,zonaVdf);
 }
 function activoEnPatio(a,patioId){
   if(!a?.ubicacion_id || !patioId) return false;
@@ -755,7 +764,7 @@ function itemsEnUbicacion(id){
   if(!id) return [];
   const ids=ubicacionesDescendientes(id);
   return items.filter(i=>
-    i.tipo==='repuesto' &&
+    ['repuesto','insumo'].includes(String(i.tipo||'').toLowerCase()) &&
     ubicacionIdItem(i) &&
     ids.has(String(ubicacionIdItem(i)))
   );
@@ -775,7 +784,13 @@ function renderConsultaStock(){
   const patio = ubicaciones.find(u=>String(u.id)===String(state.stockPatio));
 
 const esPatioMotores = patio && patio.codigo === 'PATIO-03';
+const esPatioBodega = patio && patio.codigo === 'PATIO-01';
 let sectores = patio ? ubicacionesHijas(patio.id) : [];
+
+// Patio 1: mostrar sus cuatro áreas como submenús.
+if(esPatioBodega){
+  sectores = zonasDePatio(patio.id);
+}
 
 // Patio 2: mostrar el sector CPR y cualquier sector que contenga activos CPR.
 if(patio && patio.codigo === 'PATIO-02'){
@@ -791,7 +806,7 @@ if(esPatioMotores){
 }
 
 const sector = ubicaciones.find(u=>String(u.id)===String(state.stockSector));
-const zonas = !esPatioMotores && sector ? ubicacionesHijas(sector.id) : [];
+const zonas = !esPatioMotores && !esPatioBodega && sector ? ubicacionesHijas(sector.id) : [];
 const zona = ubicaciones.find(u=>String(u.id)===String(state.stockZona));
 const posiciones = zona ? ubicacionesHijas(zona.id) : [];
 const esPatioRepuestos = patio && patio.codigo === 'PATIO-01';
@@ -799,7 +814,10 @@ let resultados = [];
 
 if(state.stockPatio){
   resultados = esPatioRepuestos
-    ? items.filter(i => i.tipo === 'repuesto')
+    ? [
+        ...items.filter(i => ['repuesto','insumo'].includes(String(i.tipo||'').toLowerCase())),
+        ...activos.filter(a => a.tipo_activo === 'vdf' && activoEnPatio(a,state.stockPatio))
+      ]
     : activosEnUbicacion(state.stockPatio);
 
   // Reglas de consulta por patio: no modificar ni reasignar datos de Supabase.
@@ -812,23 +830,28 @@ if(state.stockPatio){
   }
 
   if(state.stockSector){
-    resultados = resultados.filter(a =>
-      (esPatioRepuestos ? itemsEnUbicacion(state.stockSector) : activosEnUbicacion(state.stockSector))
-        .some(x => String(x.id) === String(a.id))
-    );
+    resultados = resultados.filter(a=>{
+      const contenido=a.tipo_activo
+        ? activosEnUbicacion(state.stockSector)
+        : itemsEnUbicacion(state.stockSector);
+      return contenido.some(x=>String(x.id)===String(a.id));
+    });
   }
 
   if(state.stockZona){
-    resultados = resultados.filter(a =>
-      (esPatioRepuestos ? itemsEnUbicacion(state.stockZona) : activosEnUbicacion(state.stockZona))
-        .some(x => String(x.id) === String(a.id))
-    );
+    resultados = resultados.filter(a=>{
+      const contenido=a.tipo_activo
+        ? activosEnUbicacion(state.stockZona)
+        : itemsEnUbicacion(state.stockZona);
+      return contenido.some(x=>String(x.id)===String(a.id));
+    });
   }
 
   if(state.stockPosicion){
-    resultados = resultados.filter(a =>
-      String(esPatioRepuestos ? ubicacionIdItem(a) : a.ubicacion_id) === String(state.stockPosicion)
-    );
+    resultados = resultados.filter(a=>{
+      const ubicacionActual=a.tipo_activo ? a.ubicacion_id : ubicacionIdItem(a);
+      return String(ubicacionActual)===String(state.stockPosicion);
+    });
   }
 }
  
@@ -850,14 +873,14 @@ if(state.stockPatio){
       </select>
     </div>
 
-    ${state.stockPatio ? `<div class="field"><label>${esPatioMotores ? '2. Zona' : '2. Sector'}</label>
+    ${state.stockPatio ? `<div class="field"><label>${esPatioMotores ? '2. Zona' : esPatioBodega ? '2. Área' : '2. Sector'}</label>
       <select id="stock-sector">
-        <option value="">${esPatioMotores ? 'Todas las zonas del patio' : 'Todos los sectores'}</option>
+        <option value="">${esPatioMotores ? 'Todas las zonas del patio' : esPatioBodega ? 'Todas las áreas del patio' : 'Todos los sectores'}</option>
         ${sectores.map(u=>`<option value="${u.id}" ${state.stockSector===u.id?'selected':''}>${u.descripcion}</option>`).join('')}
       </select>
     </div>` : ''}
 
-    ${state.stockSector && !esPatioMotores ? `<div class="field"><label>3. Zona</label>
+    ${state.stockSector && !esPatioMotores && !esPatioBodega ? `<div class="field"><label>3. Zona</label>
       <select id="stock-zona">
         <option value="">Todas las zonas</option>
         ${zonas.map(u=>`<option value="${u.id}" ${state.stockZona===u.id?'selected':''}>${u.descripcion}</option>`).join('')}
@@ -874,10 +897,10 @@ if(state.stockPatio){
     ${state.stockPatio ? `
       <div class="stat-card" style="margin:12px 0 14px;">
         <div class="num">${resultados.length}</div>
-        <div class="label">${esPatioRepuestos ? 'Repuestos encontrados' : 'Activos encontrados'}</div>
+        <div class="label">${esPatioRepuestos ? 'Activos, repuestos e insumos encontrados' : 'Activos encontrados'}</div>
         ${selectedPath ? `<div class="item-meta" style="margin-top:8px;">📍 ${selectedPath}</div>` : ''}
       </div>
-      ${resultados.length===0 ? `<div class="empty-state"><div class="icon">🔎</div><div class="title">${esPatioRepuestos ? 'Sin repuestos en esta selección' : 'Sin activos en esta selección'}</div><div class="sub">Prueba con un nivel superior o cambia el filtro.</div></div>` : resultados.map(a=>esPatioRepuestos ? renderItemCard(a) : renderActivoCard(a)).join('')}
+      ${resultados.length===0 ? `<div class="empty-state"><div class="icon">🔎</div><div class="title">${esPatioRepuestos ? 'Sin repuestos o insumos en esta selección' : 'Sin activos en esta selección'}</div><div class="sub">Prueba con un nivel superior o cambia el filtro.</div></div>` : resultados.map(a=>a.tipo_activo ? renderActivoCard(a) : renderItemCard(a)).join('')}
     ` : `
       <div class="empty-state"><div class="icon">📍</div><div class="title">Selecciona un patio</div><div class="sub">Luego iremos mostrando solo los sectores, zonas y posiciones que correspondan.</div></div>
     `}
@@ -1694,6 +1717,8 @@ function sheetWrap(title, body){
 }
 
 function sheetNuevoItem(){
+  const patio1=ubicaciones.find(u=>u.codigo==='PATIO-01');
+  const zonasPatio1=patio1?zonasDePatio(patio1.id):[];
   return `
   <div class="field"><label>Tipo</label>
     <select id="ni-tipo">
@@ -1717,7 +1742,12 @@ function sheetNuevoItem(){
     <div class="field"><label>Stock actual</label><input id="ni-stock" type="number" value="0"></div>
     <div class="field"><label>Stock mínimo</label><input id="ni-minimo" type="number" value="0"></div>
   </div>
-  <div class="field"><label>Ubicación en bodega</label><input id="ni-ubicacion" placeholder="Ej: Estante A - Nivel 2 - Casillero 5"></div>
+  <div class="field"><label>Área de Patio 1</label>
+    <select id="ni-ubicacion">
+      <option value="">— Selecciona un área —</option>
+      ${zonasPatio1.map(z=>`<option value="${z.codigo}">${z.descripcion||z.codigo}</option>`).join('')}
+    </select>
+  </div>
   <div class="field"><label>Proveedor</label><input id="ni-proveedor" placeholder="Opcional"></div>
   <div class="field"><label>Equipo asociado</label><input id="ni-equipo" placeholder="Ej: Variador ABB ACS550 (opcional)"></div>
   <button class="btn btn-primary" id="ni-guardar">Guardar ítem</button>
@@ -1947,6 +1977,12 @@ async function onAgregarActivo(){
   }
   if(tipoActivo==='cpr' && patioElegido?.codigo!=='PATIO-02'){
     showToast("Los CPR solo se pueden asignar al Patio 2");return;
+  }
+  if(tipoActivo==='vdf' && patioElegido?.codigo!=='PATIO-01'){
+    showToast("Los VDF solo se pueden asignar a la zona Variadores del Patio 1");return;
+  }
+  if(tipoActivo==='vdf' && ubicaciones.find(u=>String(u.id)===String(zonaId))?.codigo!=='P1-Z1-VARIADORES'){
+    showToast("Asigna el VDF a la zona Variadores del Patio 1");return;
   }
   if(zonaId && !zonasDePatio(patioId).some(z=>String(z.id)===String(zonaId))){
     showToast("La zona seleccionada no corresponde al patio");return;
