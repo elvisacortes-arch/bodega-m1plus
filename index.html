@@ -665,7 +665,7 @@ function zonasDePatio(patioId){
   const descendientes=ubicacionesDescendientes(patioId);
   const codigoPatio=String(patio.codigo||'').toUpperCase();
   const permitidas=codigoPatio==='PATIO-01'
-    ? new Set(['P1-Z1-VARIADORES','P1-Z2-REP-ELECTRICA','P1-Z3-REP-MECANICA','P1-Z4-INSUMOS'])
+    ? new Set(['P1-Z1-VARIADORES','P1-Z2-REP-ELECTRICA','P1-Z3-REP-MECANICA','P1-Z4-INSUMOS','P1-Z5-INSTRUMENTACION'])
     : codigoPatio==='PATIO-02'
       ? new Set(['P2-CPR-Z1','P2-CPR-Z2','P2-CPR-Z3','P2-CPR-Z4','P2-CPR-Z5'])
       : codigoPatio==='PATIO-03'
