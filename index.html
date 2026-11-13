@@ -772,7 +772,7 @@ function itemsEnUbicacion(id){
 
 function etiquetaPatio(u){
   const etiquetas={
-    "PATIO-01":"PATIO-01 — Patio 1 - Repuestos",
+    "PATIO-01":"PATIO-01 — Patio 1 - Variadores, repuestos e insumos",
     "PATIO-02":"PATIO-02 — Patio 2 - CPR",
     "PATIO-03":"PATIO-03 — Patio 3 - Motores"
   };
@@ -815,7 +815,7 @@ let resultados = [];
 if(state.stockPatio){
   resultados = esPatioRepuestos
     ? [
-        ...items.filter(i => ['repuesto','insumo'].includes(String(i.tipo||'').toLowerCase())),
+        ...itemsEnUbicacion(state.stockPatio),
         ...activos.filter(a => a.tipo_activo === 'vdf' && activoEnPatio(a,state.stockPatio))
       ]
     : activosEnUbicacion(state.stockPatio);
