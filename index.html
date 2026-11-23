@@ -233,7 +233,15 @@
   .mv-tag{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:5px; font-weight:700; text-transform:uppercase;}
   .mv-tag.entrada{background:var(--ok-soft); color:var(--ok);}
   .mv-tag.salida{background:var(--danger-soft); color:var(--danger);}
-  .mv-tag.ajuste_conteo{background:var(--warn-soft); color:var(--warn);}
+  .mv-tag.ajuste_conteo,.asset-history-tag.ajuste_conteo{background:var(--warn-soft);color:var(--warn);}
+  .mv-tag.ingreso,.asset-history-tag.ingreso{background:var(--ok-soft);color:var(--ok);}
+  .mv-tag.traslado,.asset-history-tag.traslado{background:#4d8dcc22;color:#6fa8e8;}
+  .mv-tag.salida_reparacion,.asset-history-tag.salida_reparacion{background:#d4a01722;color:#e0b847;}
+  .mv-tag.salida_externa,.asset-history-tag.salida_externa{background:#9a6bd122;color:#c09be8;}
+  .mv-tag.salida_mantencion,.asset-history-tag.salida_mantencion{background:#cf743122;color:#ed9861;}
+  .mv-tag.montaje_bomba,.asset-history-tag.montaje_bomba{background:#287b7d33;color:#82c6c1;}
+  .mv-tag.retorno,.asset-history-tag.retorno{background:#278c7926;color:#70c4ae;}
+  .mv-tag.baja,.asset-history-tag.baja{background:var(--danger-soft);color:#f08b83;}
 
   .config-row{display:flex; justify-content:space-between; align-items:center; padding:13px 0; border-bottom:1px solid var(--border);}
   .config-row:last-child{border-bottom:none;}
@@ -1233,10 +1241,11 @@ function sheetDetalleActivo(){
       : historial.slice(0,20).map(m=>{
           const origen = m.ubicacion_origen_id ? ubicacionRuta(m.ubicacion_origen_id) : 'Sin origen';
           const destino = m.ubicacion_destino_id ? ubicacionRuta(m.ubicacion_destino_id) : 'Sin destino';
+          const estiloMovimiento=estiloVisualMovimiento(m);
           return `
           <div class="asset-history-row">
             <div class="asset-history-route">
-              <span class="asset-history-tag">${m.tipo_movimiento||'traslado'}</span>
+              <span class="asset-history-tag ${estiloMovimiento.clase}">${estiloMovimiento.etiqueta}</span>
               ${origen} → ${destino}
             </div>
             <div class="asset-history-meta">
@@ -1624,6 +1633,31 @@ function renderConteoTab(){
   `;
 }
 
+function estiloVisualMovimiento(m){
+  const tipo=String(m?.tipo_movimiento||'').trim().toUpperCase();
+  const motivo=String(m?.motivo||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const estilos={
+    INGRESO:{clase:'ingreso',etiqueta:'Ingreso'},
+    TRASLADO:{clase:'traslado',etiqueta:'Traslado'},
+    SALIDA_REPARACION:{clase:'salida_reparacion',etiqueta:'Salida a reparación'},
+    SALIDA_EXTERNA:{clase:'salida_externa',etiqueta:'Maestranza externa'},
+    SALIDA_MANTENCION:{clase:'salida_mantencion',etiqueta:'Retiro por mantención'},
+    MONTAJE_BOMBA:{clase:'montaje_bomba',etiqueta:'Montaje en bomba'},
+    RETORNO:{clase:'retorno',etiqueta:'Retorno'},
+    BAJA:{clase:'baja',etiqueta:'Baja'}
+  };
+  if(estilos[tipo]) return estilos[tipo];
+  if(motivo.includes('maestranza')||motivo.includes('externa')) return estilos.SALIDA_EXTERNA;
+  if(motivo.includes('mantencion')) return estilos.SALIDA_MANTENCION;
+  if(motivo.includes('montaje')||motivo.includes('bomba')) return estilos.MONTAJE_BOMBA;
+  if(motivo.includes('reparacion')) return estilos.SALIDA_REPARACION;
+  if(motivo.includes('retorno')||motivo.includes('regreso')) return estilos.RETORNO;
+  if(motivo.includes('ingreso')||motivo.includes('alta')) return estilos.INGRESO;
+  if(motivo.includes('baja')) return estilos.BAJA;
+  if(motivo.includes('traslado')||motivo.includes('reubicacion')) return estilos.TRASLADO;
+  return {clase:'ajuste_conteo',etiqueta:tipo?tipo.replaceAll('_',' '):'Movimiento'};
+}
+
 function renderMovimientos(){
   const list = movimientos.slice().sort((a,b)=> new Date(b.fecha||b.created_at)-new Date(a.fecha||a.created_at));
 
@@ -1635,6 +1669,7 @@ function renderMovimientos(){
       const it = items.find(i=>String(i.id)===String(m.item_id));
       const ac = activos.find(a=>String(a.id)===String(m.activo_id));
       const fecha = m.fecha||m.created_at;
+      const estiloMovimiento=estiloVisualMovimiento(m);
 
       if(ac || m.activo_id){
         const origen = m.ubicacion_origen_id ? ubicacionRuta(m.ubicacion_origen_id) : 'Sin origen';
@@ -1648,7 +1683,7 @@ function renderMovimientos(){
             <div style="color:var(--text-muted);margin-top:2px;">${m.motivo||''} · ${m.responsable||''} · ${fmtFecha(fecha)}</div>
           </div>
           <div style="text-align:right;">
-            <div class="mv-tag ajuste_conteo">${m.tipo_movimiento||'traslado'}</div>
+            <div class="mv-tag ${estiloMovimiento.clase}">${estiloMovimiento.etiqueta}</div>
           </div>
         </div>`;
       }
