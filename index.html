@@ -1622,7 +1622,7 @@ function renderConteoTab(){
           <option value="">— Selecciona el motivo —</option>
           <option value="maestranza_externa">Envío a maestranza externa</option>
           <option value="mantencion">Retiro por mantención</option>
-          <option value="montaje_bomba">Montaje en bomba</option>
+          <option value="montaje_bomba">Instalación en bomba</option>
         </select></div>
         <div class="field"><label>Detalle / referencia</label><input id="gr-detalle" placeholder="Ej: número de OT, bomba o destino"></div>
         <div class="gestion-alert">Al confirmar, se quitará de la ubicación de bodega y se registrará en el historial con usuario, fecha y motivo.</div>
@@ -1642,7 +1642,7 @@ function estiloVisualMovimiento(m){
     SALIDA_REPARACION:{clase:'salida_reparacion',etiqueta:'Salida a reparación'},
     SALIDA_EXTERNA:{clase:'salida_externa',etiqueta:'Maestranza externa'},
     SALIDA_MANTENCION:{clase:'salida_mantencion',etiqueta:'Retiro por mantención'},
-    MONTAJE_BOMBA:{clase:'montaje_bomba',etiqueta:'Montaje en bomba'},
+    MONTAJE_BOMBA:{clase:'montaje_bomba',etiqueta:'Instalación en bomba'},
     RETORNO:{clase:'retorno',etiqueta:'Retorno'},
     BAJA:{clase:'baja',etiqueta:'Baja'}
   };
@@ -2106,7 +2106,7 @@ async function onRetirarActivo(){
   if(!a){showToast("Selecciona un activo");return;}
   if(!tipoMotivo){showToast("Selecciona el motivo del retiro");return;}
   if(!responsable){showToast("Ingresa quién realiza el retiro");return;}
-  const labels={maestranza_externa:'Envío a maestranza externa',mantencion:'Retiro por mantención',montaje_bomba:'Montaje en bomba'};
+  const labels={maestranza_externa:'Envío a maestranza externa',mantencion:'Retiro por mantención',montaje_bomba:'Instalación en bomba'};
   const tiposMovimiento={
     maestranza_externa:'SALIDA_EXTERNA',
     mantencion:'SALIDA_MANTENCION',
